@@ -58,7 +58,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user)):
             data.username,
             data.bio,
             data.rating,
-            data.data.interests,
+            data.interests,
             data.profile_image_url,
             data.preferred_language,
         )
