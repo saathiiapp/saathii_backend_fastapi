@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
+import time
 from app.clients.redis_client import redis_client
 from app.clients.db import get_db_pool
 from app.clients.jwt_handler import decode_jwt
@@ -11,12 +12,16 @@ async def get_current_user_async(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
     token = authorization.split(" ")[1]
-    # Reject if blacklisted
-    if await redis_client.get(f"bl:{token}"):
-        raise HTTPException(status_code=401, detail="Token has been revoked")
     payload = decode_jwt(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+    if payload.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Access token required")
+    # Reject if blacklisted (scoped by user id and access jti)
+    user_id = payload.get("user_id")
+    jti = payload.get("jti")
+    if user_id and jti and await redis_client.get(f"access:{user_id}:{jti}"):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
     return payload
 
 
@@ -67,3 +72,31 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
             data.preferred_language,
         )
         return dict(db_user)
+
+
+@router.delete("/users/me")
+async def delete_me(authorization: str = Header(...), user=Depends(get_current_user_async)):
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid auth header")
+    token = authorization.split(" ")[1]
+
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Remove dependent rows first to satisfy FK constraints
+        await conn.execute("DELETE FROM user_roles WHERE user_id=$1", user["user_id"])
+        await conn.execute("DELETE FROM users WHERE user_id=$1", user["user_id"])
+
+    # Revoke all refresh tokens for the user
+    pattern = f"refresh:{user['user_id']}:*"
+    async for key in redis_client.scan_iter(match=pattern):
+        await redis_client.delete(key)
+
+    # Blacklist current access token by jti until expiry
+    jti = user.get("jti")
+    exp = user.get("exp")
+    if jti and exp:
+        ttl_seconds = int(exp - time.time())
+        if ttl_seconds > 0:
+            await redis_client.setex(f"access:{user['user_id']}:{jti}", ttl_seconds, "1")
+
+    return {"message": "User deleted"}
