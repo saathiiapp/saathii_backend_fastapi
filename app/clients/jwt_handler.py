@@ -6,7 +6,7 @@ SECRET_KEY = os.getenv("JWT_SECRET", "changeme")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
 
-def create_jwt(data: dict, expires_delta: int = 3600):
+def create_jwt(data: dict, expires_delta: int = 604800):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(seconds=expires_delta)
     to_encode.update({"exp": expire})
