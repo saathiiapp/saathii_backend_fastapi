@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
+import time
 from app.clients.redis_client import redis_client
 from app.clients.jwt_handler import create_jwt
 from app.clients.db import get_db_pool
@@ -57,3 +58,35 @@ async def verify_otp(data: VerifyRequest):
 
         token = create_jwt({"user_id": user["user_id"], "phone": user["phone"]})
         return TokenResponse(token=token)
+
+
+@router.post("/auth/logout")
+async def logout(authorization: str = Header(...)):
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid auth header")
+
+    token = authorization.split(" ")[1]
+    payload = None
+    try:
+        # Reuse decode path from user dependency semantics
+        from app.clients.jwt_handler import decode_jwt
+
+        payload = decode_jwt(token)
+    except Exception:
+        payload = None
+
+    if not payload:
+        # Token already invalid/expired
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    exp = payload.get("exp")
+    if not exp:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    ttl_seconds = int(exp - time.time())
+    if ttl_seconds <= 0:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    # Blacklist the token until it naturally expires
+    await redis_client.setex(f"bl:{token}", ttl_seconds, "1")
+    return {"message": "Logged out"}

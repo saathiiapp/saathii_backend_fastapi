@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
+from app.clients.redis_client import redis_client
 from app.clients.db import get_db_pool
 from app.clients.jwt_handler import decode_jwt
 from app.schemas.user import UserResponse, EditUserRequest
@@ -6,10 +7,13 @@ from app.schemas.user import UserResponse, EditUserRequest
 router = APIRouter()
 
 
-def get_current_user(authorization: str = Header(...)):
+async def get_current_user_async(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
     token = authorization.split(" ")[1]
+    # Reject if blacklisted
+    if await redis_client.get(f"bl:{token}"):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
     payload = decode_jwt(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
@@ -17,7 +21,7 @@ def get_current_user(authorization: str = Header(...)):
 
 
 @router.get("/users/me", response_model=UserResponse)
-async def get_me(user=Depends(get_current_user)):
+async def get_me(user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         db_user = await conn.fetchrow(
@@ -38,7 +42,7 @@ async def get_me(user=Depends(get_current_user)):
 
 
 @router.put("/users/me", response_model=UserResponse)
-async def edit_me(data: EditUserRequest, user=Depends(get_current_user)):
+async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         db_user = await conn.fetchrow(
