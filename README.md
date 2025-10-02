@@ -26,6 +26,20 @@ This guide explains how a React Native Expo app should use the authentication AP
   - 200 `{ "message": "OTP sent" }`
   - 429 Too many requests (simple rate limit: 5 per 15 minutes)
 
+1a) Resend OTP
+- `POST /auth/resend_otp`
+- Body:
+```json
+{ "phone": "+919876543210" }
+```
+- Behavior:
+  - Throttle: 1 resend per 60 seconds per phone
+  - If an OTP is active, re-sends the same code without changing its TTL
+  - If no OTP is active, generates and sends a new code (5 minute TTL)
+- Responses:
+  - 200 `{ "message": "OTP re-sent" }` or `{ "message": "OTP sent" }`
+  - 429 on throttle
+
 2) Verify OTP
 - `POST /auth/verify`
 - Body:
@@ -196,6 +210,10 @@ Auth flow
 Curl examples
 ```bash
 curl -X POST 'http://localhost:8000/auth/request_otp' \
+  -H 'Content-Type: application/json' \
+  -d '{"phone":"+919876543210"}'
+
+curl -X POST 'http://localhost:8000/auth/resend_otp' \
   -H 'Content-Type: application/json' \
   -d '{"phone":"+919876543210"}'
 

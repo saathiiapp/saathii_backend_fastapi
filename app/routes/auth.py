@@ -37,6 +37,28 @@ async def request_otp(data: OTPRequest):
     return {"message": "OTP sent"}
 
 
+@router.post("/auth/resend_otp")
+async def resend_otp(data: OTPRequest):
+    # Short throttle: allow one resend every 60 seconds per phone
+    throttle_key = f"otp_resend:{data.phone}"
+    if await redis_client.get(throttle_key):
+        raise HTTPException(status_code=429, detail="Please wait before requesting another OTP")
+    await redis_client.setex(throttle_key, 60, "1")
+
+    otp_key = f"otp:{data.phone}"
+    current_otp = await redis_client.get(otp_key)
+    if current_otp:
+        # Re-send the same OTP without changing TTL
+        send_otp_message(data.phone, current_otp)
+        return {"message": "OTP re-sent"}
+
+    # No active OTP; generate a new one
+    otp = generate_otp()
+    await redis_client.setex(otp_key, 300, otp)
+    send_otp_message(data.phone, otp)
+    return {"message": "OTP sent"}
+
+
 @router.post("/auth/verify", response_model=VerifyResponse)
 async def verify_otp(data: VerifyRequest):
     stored_otp = await redis_client.get(f"otp:{data.phone}")
