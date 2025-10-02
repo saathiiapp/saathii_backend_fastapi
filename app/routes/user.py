@@ -21,7 +21,16 @@ async def get_me(user=Depends(get_current_user)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         db_user = await conn.fetchrow(
-            "SELECT * FROM users WHERE user_id=$1", user["user_id"]
+            """
+            SELECT 
+                u.*,
+                array_agg(ur.role) FILTER (WHERE ur.active = TRUE) AS roles
+            FROM users u
+            LEFT JOIN user_roles ur ON u.user_id = ur.user_id
+            WHERE u.user_id = $1
+            GROUP BY u.user_id
+            """,
+            user["user_id"],
         )
         if not db_user:
             raise HTTPException(status_code=404, detail="User not found")

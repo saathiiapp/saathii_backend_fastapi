@@ -21,7 +21,7 @@ class UserResponse(BaseModel):
     preferred_language: Optional[str] = None
     rating: Optional[int] = None
     country: Optional[str] = None
-    role: Optional[str] = None
+    roles: Optional[List[str]] = None
 
 
 class EditUserRequest(BaseModel):
