@@ -47,7 +47,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user)):
             SET username=COALESCE($2, username),
                 bio=COALESCE($3, bio),
                 interests=COALESCE($4, interests),
-                profile_photo=COALESCE($5, profile_photo),
+                profile_image_url=COALESCE($5, profile_image_url),
                 preferred_language=COALESCE($6, preferred_language),
                 updated_at=now()
             WHERE user_id=$1
@@ -57,7 +57,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user)):
             data.username,
             data.bio,
             data.interests,
-            data.profile_photo,
+            data.profile_image_url,
             data.preferred_language,
         )
         return dict(db_user)
