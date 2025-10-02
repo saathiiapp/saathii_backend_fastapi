@@ -1,22 +1,32 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
+from enum import Enum
+
+
+class SexEnum(str, Enum):
+    male = "male"
+    female = "female"
 
 
 class UserResponse(BaseModel):
     user_id: int
     phone: str
-    username: Optional[str]
-    dob: Optional[date]
-    bio: Optional[str]
-    interests: Optional[List[str]]
-    profile_photo: Optional[str]
-    preferred_language: Optional[str]
+    username: Optional[str] = None
+    sex: Optional[SexEnum] = None
+    dob: Optional[date] = None
+    bio: Optional[str] = None
+    interests: Optional[List[str]] = None
+    profile_image_url: Optional[str] = None
+    preferred_language: Optional[str] = None
+    rating: Optional[int] = None
+    country: Optional[str] = None
+    role: Optional[str] = None
 
 
 class EditUserRequest(BaseModel):
-    username: Optional[str]
-    bio: Optional[str]
-    interests: Optional[List[str]]
-    profile_photo: Optional[str]
-    preferred_language: Optional[str]
+    username: Optional[str] = None
+    bio: Optional[str] = None
+    interests: Optional[List[str]] = None
+    profile_image_url: Optional[str] = None
+    preferred_language: Optional[str] = None

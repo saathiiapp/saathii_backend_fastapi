@@ -20,8 +20,8 @@ class VerifyRequest(BaseModel):
     sex: Optional[SexEnum] = None
     dob: Optional[date] = None
     bio: Optional[str] = None
-    interests: Optional[List[str]] = []
-    profile_photo: Optional[str] = None
+    interests: Optional[List[str]] = None
+    profile_image_url: Optional[str] = None
     preferred_language: Optional[str] = None
     role: Optional[str] = None
 
