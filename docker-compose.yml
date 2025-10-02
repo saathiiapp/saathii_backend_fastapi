@@ -6,13 +6,46 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/code
-    ports:
-      - "8000:8000"
     env_file: .env
     depends_on:
       - redis
+    labels:
+      - "traefik.enable=true"
+      # Router for HTTPS
+      - "traefik.http.routers.api.rule=Host(`saathiiapp.com`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=myresolver"
+      # Redirect HTTP -> HTTPS
+      - "traefik.http.routers.api-http.rule=Host(`saathiiapp.com`)"
+      - "traefik.http.routers.api-http.entrypoints=web"
+      - "traefik.http.routers.api-http.middlewares=redirect-to-https"
+      # Service port (FastAPI inside container)
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Enable Let's Encrypt
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=qritwik@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    labels:
+      # Middleware to redirect HTTP → HTTPS
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
