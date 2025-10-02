@@ -27,6 +27,7 @@ class UserResponse(BaseModel):
 class EditUserRequest(BaseModel):
     username: Optional[str] = None
     bio: Optional[str] = None
+    rating: Optional[int] = None
     interests: Optional[List[str]] = None
     profile_image_url: Optional[str] = None
     preferred_language: Optional[str] = None

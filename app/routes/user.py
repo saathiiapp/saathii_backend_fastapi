@@ -46,9 +46,10 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user)):
             UPDATE users
             SET username=COALESCE($2, username),
                 bio=COALESCE($3, bio),
-                interests=COALESCE($4, interests),
-                profile_image_url=COALESCE($5, profile_image_url),
-                preferred_language=COALESCE($6, preferred_language),
+                rating=COALESCE($4, rating),
+                interests=COALESCE($5, interests),
+                profile_image_url=COALESCE($6, profile_image_url),
+                preferred_language=COALESCE($7, preferred_language),
                 updated_at=now()
             WHERE user_id=$1
             RETURNING *;
@@ -56,7 +57,8 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user)):
             user["user_id"],
             data.username,
             data.bio,
-            data.interests,
+            data.rating,
+            data.data.interests,
             data.profile_image_url,
             data.preferred_language,
         )
