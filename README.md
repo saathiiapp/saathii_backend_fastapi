@@ -1694,7 +1694,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - Open `http://localhost:8000/redoc` for ReDoc
 
 5. **S3 Setup (Optional)**
-- See `S3_SETUP.md` for detailed AWS S3 configuration
+- See [S3 Setup Guide](docs/guides/s3-setup) for detailed AWS S3 configuration
 - Required for listener verification audio uploads
 
 ## 🔧 Features

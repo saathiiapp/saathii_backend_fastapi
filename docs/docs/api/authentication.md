@@ -371,47 +371,9 @@ curl -X POST 'https://saathiiapp.com/auth/logout' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
-## Interactive Examples
-
-Try these authentication endpoints directly in your browser:
-
-import CompactAPITester from '@site/src/components/CompactAPITester';
-
-### Request OTP
-<CompactAPITester 
-  endpoint="/auth/request_otp"
-  method="POST"
-  description="Send OTP to phone number"
-  exampleBody='{"phone": "+919876543210"}'
-/>
-
-### Verify OTP
-<CompactAPITester 
-  endpoint="/auth/verify"
-  method="POST"
-  description="Verify OTP and get tokens"
-  exampleBody='{"phone": "+919876543210", "otp": "123456"}'
-/>
-
-### Refresh Token
-<CompactAPITester 
-  endpoint="/auth/refresh"
-  method="POST"
-  description="Refresh access token using refresh token"
-  exampleBody='{"refresh_token": "your_refresh_token_here"}'
-/>
-
-### Logout
-<CompactAPITester 
-  endpoint="/auth/logout"
-  method="POST"
-  description="Logout and invalidate tokens"
-  exampleBody=""
-/>
-
 ## Next Steps
 
 - Learn about [User Management API](./user-management) for profile operations
 - Explore [Presence & Status API](./presence-status) for real-time user status
 - Check out [WebSocket Integration](./websocket-realtime) for live updates
-- Use the [Full API Tester](./api-tester) for comprehensive testing
+- Access the [API Documentation](./swagger-ui) for interactive testing

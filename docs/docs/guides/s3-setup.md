@@ -1,6 +1,12 @@
-# S3 Audio Upload Setup
+---
+sidebar_position: 2
+title: S3 Setup Guide
+description: Complete guide for setting up AWS S3 for audio file uploads and listener verification
+---
 
-This document explains how to set up S3 audio file uploads for listener verification.
+# S3 Setup Guide
+
+This guide explains how to set up AWS S3 for audio file uploads and listener verification in the Saathii Backend API.
 
 ## Environment Variables
 

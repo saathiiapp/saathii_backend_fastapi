@@ -1,16 +1,24 @@
 ---
 sidebar_position: 7
-title: Interactive API Explorer
-description: Interactive Swagger UI for testing API endpoints
+title: API Documentation
+description: Access Swagger UI and ReDoc documentation for the Saathii Backend API
 ---
 
-# Interactive API Explorer
+# API Documentation
 
-Use the interactive Swagger UI below to explore and test the Saathii Backend API endpoints directly from your browser.
+Access the comprehensive API documentation for the Saathii Backend API using the following tools:
 
-import SwaggerUI from '@site/src/components/SwaggerUI';
+## Swagger UI
 
-<SwaggerUI url="https://saathiiapp.com/openapi.json" height="800px" />
+The interactive Swagger UI provides a comprehensive interface to explore and test all API endpoints:
+
+**[Open Swagger UI →](https://saathiiapp.com/docs)**
+
+## ReDoc
+
+ReDoc offers a clean, readable documentation format with detailed endpoint information:
+
+**[Open ReDoc →](https://saathiiapp.com/redoc)**
 
 ## How to Use
 
