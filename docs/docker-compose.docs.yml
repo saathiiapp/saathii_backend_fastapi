@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.docs.rule=Host(`docs.saathiiapp.com`)"
+      - "traefik.http.routers.docs.entrypoints=web"
+      - "traefik.http.routers.docs.tls=true"
+      - "traefik.http.routers.docs.tls.certresolver=letsencrypt"
+    networks:
+      - docs-network
+
+networks:
+  docs-network:
+    driver: bridge
