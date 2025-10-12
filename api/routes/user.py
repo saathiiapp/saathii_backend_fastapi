@@ -6,8 +6,9 @@ from app.clients.redis_client import redis_client
 from app.clients.db import get_db_pool
 from app.clients.jwt_handler import decode_jwt
 from app.clients.s3_client import s3_client
-from app.utils.presence import mark_inactive_users_offline, cleanup_expired_busy_status
+# Background functions moved to services - no longer needed in API
 from app.utils.realtime import broadcast_user_status_update, get_user_status_for_broadcast
+from app.utils.badge_manager import get_current_listener_badge
 from app.schemas.user import (
     UserResponse, 
     EditUserRequest, 
@@ -23,15 +24,6 @@ from app.schemas.user import (
     FavoriteUser,
     FavoritesResponse,
     FavoriteActionResponse,
-    WalletBalanceResponse,
-    CallEarning,
-    CallEarningsResponse,
-    WithdrawalRequest,
-    WithdrawalResponse,
-    WithdrawalHistoryItem,
-    WithdrawalHistoryResponse,
-    BankDetailsUpdate,
-    BankDetailsResponse,
     BlockUserRequest,
     UnblockUserRequest,
     BlockActionResponse,
@@ -42,9 +34,7 @@ from app.schemas.user import (
     VerificationStatusResponse,
     AdminReviewRequest,
     AdminReviewResponse,
-    ListenerVerificationStatus,
-    AddCoinsRequest,
-    AddCoinsResponse
+    ListenerVerificationStatus
 )
 
 router = APIRouter(tags=["User Management"])
@@ -299,22 +289,7 @@ async def get_multiple_users_presence(
         return [dict(presence) for presence in presences]
 
 
-@router.post("/admin/cleanup-presence")
-async def cleanup_presence(user=Depends(get_current_user_async)):
-    """Admin endpoint to manually trigger presence cleanup"""
-    # Note: In production, you might want to add admin role checking here
-    
-    # Mark inactive users as offline (5 minutes threshold)
-    offline_result = await mark_inactive_users_offline(inactive_minutes=5)
-    
-    # Clean up expired busy status
-    busy_result = await cleanup_expired_busy_status()
-    
-    return {
-        "message": "Presence cleanup completed",
-        "users_marked_offline": offline_result,
-        "busy_status_cleared": busy_result
-    }
+# Removed: /admin/cleanup-presence - redundant with background job
 
 
 @router.get("/feed/listeners", response_model=FeedResponse)
@@ -808,401 +783,6 @@ async def check_favorite_status(
             is_favorited=is_favorited
         )
 
-# Wallet and withdrawal related endpoints
-@router.get("/wallet/balance", response_model=WalletBalanceResponse)
-async def get_wallet_balance(user=Depends(get_current_user_async)):
-    """Get listener's wallet balance and earnings summary"""
-    user_id = user["user_id"]
-    
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        # Get wallet information
-        wallet = await conn.fetchrow(
-            """
-            SELECT balance_coins, withdrawable_money
-            FROM user_wallets 
-            WHERE user_id = $1
-            """,
-            user_id
-        )
-        
-        if not wallet:
-            raise HTTPException(status_code=404, detail="Wallet not found")
-        
-        # Get total earned from transactions
-        total_earned = await conn.fetchval(
-            """
-            SELECT COALESCE(SUM(money_change), 0)
-            FROM user_transactions ut
-            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
-            WHERE uw.user_id = $1 AND ut.tx_type = 'earn'
-            """,
-            user_id
-        )
-        
-        # Get total withdrawn from transactions
-        total_withdrawn = await conn.fetchval(
-            """
-            SELECT COALESCE(SUM(ABS(money_change)), 0)
-            FROM user_transactions ut
-            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
-            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
-            """,
-            user_id
-        )
-        
-        # Get pending withdrawals (withdraw transactions that haven't been processed)
-        pending_withdrawals = await conn.fetchval(
-            """
-            SELECT COALESCE(SUM(ABS(money_change)), 0)
-            FROM user_transactions ut
-            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
-            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
-            """,
-            user_id
-        )
-        
-        return WalletBalanceResponse(
-            user_id=user_id,
-            balance_coins=wallet['balance_coins'],
-            withdrawable_money=float(wallet['withdrawable_money']),
-            total_earned=float(total_earned or 0),
-            total_withdrawn=float(total_withdrawn or 0),
-            pending_withdrawals=float(pending_withdrawals or 0)
-        )
-
-@router.post("/wallet/add-coins", response_model=AddCoinsResponse)
-async def add_coins_to_wallet(
-    data: AddCoinsRequest,
-    user=Depends(get_current_user_async)
-):
-    """Add coins to user's wallet"""
-    user_id = user["user_id"]
-    coins_to_add = data.coins
-    tx_type = data.tx_type
-    money_amount = data.money_amount or 0.0
-    
-    # Validate transaction type
-    valid_tx_types = ["purchase", "bonus", "referral_bonus"]
-    if tx_type not in valid_tx_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid transaction type. Must be one of: {', '.join(valid_tx_types)}"
-        )
-    
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        # Get or create wallet
-        wallet = await conn.fetchrow(
-            "SELECT wallet_id, balance_coins FROM user_wallets WHERE user_id = $1",
-            user_id
-        )
-        
-        if not wallet:
-            # Create wallet if it doesn't exist
-            wallet = await conn.fetchrow(
-                """
-                INSERT INTO user_wallets (user_id, balance_coins, created_at, updated_at)
-                VALUES ($1, 0, now(), now())
-                RETURNING wallet_id, balance_coins
-                """,
-                user_id
-            )
-        
-        # Update wallet balance
-        new_balance = wallet['balance_coins'] + coins_to_add
-        await conn.execute(
-            "UPDATE user_wallets SET balance_coins = $1, updated_at = now() WHERE wallet_id = $2",
-            new_balance, wallet['wallet_id']
-        )
-        
-        # Create transaction record
-        transaction = await conn.fetchrow(
-            """
-            INSERT INTO user_transactions (wallet_id, tx_type, coins_change, money_change, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, now(), now())
-            RETURNING transaction_id, created_at
-            """,
-            wallet['wallet_id'], tx_type, coins_to_add, money_amount
-        )
-        
-        return AddCoinsResponse(
-            transaction_id=transaction['transaction_id'],
-            coins_added=coins_to_add,
-            money_amount=money_amount,
-            new_balance=new_balance,
-            message=f"Successfully added {coins_to_add} coins to wallet" + (f" (₹{money_amount:.2f})" if money_amount > 0 else ""),
-            created_at=transaction['created_at']
-        )
-
-@router.get("/wallet/earnings", response_model=CallEarningsResponse)
-async def get_call_earnings(
-    page: int = 1,
-    per_page: int = 20,
-    user=Depends(get_current_user_async)
-):
-    """Get listener's earnings from individual calls"""
-    user_id = user["user_id"]
-    
-    if page < 1:
-        page = 1
-    if per_page < 1 or per_page > 100:
-        per_page = 20
-    
-    offset = (page - 1) * per_page
-    
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        # Get call earnings with pagination
-        earnings_query = """
-            SELECT 
-                uc.call_id,
-                uc.user_id,
-                uc.listener_id,
-                uc.call_type,
-                uc.start_time,
-                uc.end_time,
-                uc.duration_minutes,
-                uc.listener_money_earned,
-                uc.coins_spent,
-                uc.status
-            FROM user_calls uc
-            WHERE uc.listener_id = $1 AND uc.status = 'completed'
-            ORDER BY uc.start_time DESC
-            LIMIT $2 OFFSET $3
-        """
-        
-        earnings = await conn.fetch(earnings_query, user_id, per_page, offset)
-        
-        # Get total count
-        total_calls = await conn.fetchval(
-            "SELECT COUNT(*) FROM user_calls WHERE listener_id = $1 AND status = 'completed'",
-            user_id
-        )
-        
-        # Get total earnings
-        total_earnings = await conn.fetchval(
-            "SELECT COALESCE(SUM(listener_money_earned), 0) FROM user_calls WHERE listener_id = $1 AND status = 'completed'",
-            user_id
-        )
-        
-        # Format earnings
-        earnings_list = []
-        for earning in earnings:
-            earnings_list.append(CallEarning(
-                call_id=earning['call_id'],
-                user_id=earning['user_id'],
-                listener_id=earning['listener_id'],
-                call_type=earning['call_type'],
-                start_time=earning['start_time'],
-                end_time=earning['end_time'],
-                duration_minutes=earning['duration_minutes'],
-                money_earned=float(earning['listener_money_earned']),
-                coins_earned=earning['coins_spent'],  # This represents the coins that were spent by user
-                status=earning['status']
-            ))
-        
-        has_next = offset + per_page < total_calls
-        has_previous = page > 1
-        
-        return CallEarningsResponse(
-            earnings=earnings_list,
-            total_earnings=float(total_earnings or 0),
-            total_calls=total_calls,
-            page=page,
-            per_page=per_page,
-            has_next=has_next,
-            has_previous=has_previous
-        )
-
-@router.post("/wallet/withdraw", response_model=WithdrawalResponse)
-async def request_withdrawal(
-    data: WithdrawalRequest,
-    user=Depends(get_current_user_async)
-):
-    """Request withdrawal from wallet"""
-    user_id = user["user_id"]
-    amount = data.amount
-    
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        # Get wallet information
-        wallet = await conn.fetchrow(
-            "SELECT wallet_id, withdrawable_money FROM user_wallets WHERE user_id = $1",
-            user_id
-        )
-        
-        if not wallet:
-            raise HTTPException(status_code=404, detail="Wallet not found")
-        
-        # Check if user has sufficient balance
-        if amount > wallet['withdrawable_money']:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Insufficient balance. Available: ₹{wallet['withdrawable_money']:.2f}, Requested: ₹{amount:.2f}"
-            )
-        
-        # Check if user has bank details
-        bank_details = await conn.fetchrow(
-            "SELECT payout_account FROM listener_payout WHERE user_id = $1",
-            user_id
-        )
-        
-        if not bank_details or not bank_details['payout_account']:
-            raise HTTPException(
-                status_code=400,
-                detail="Bank details not found. Please add your bank details before requesting withdrawal."
-            )
-        
-        # Create withdrawal transaction
-        transaction = await conn.fetchrow(
-            """
-            INSERT INTO user_transactions (wallet_id, tx_type, money_change, created_at)
-            VALUES ($1, 'withdraw', -$2, now())
-            RETURNING transaction_id, created_at
-            """,
-            wallet['wallet_id'], amount
-        )
-        
-        return WithdrawalResponse(
-            transaction_id=transaction['transaction_id'],
-            amount=amount,
-            message=f"Withdrawal request of ₹{amount:.2f} submitted successfully",
-            created_at=transaction['created_at']
-        )
-
-@router.get("/wallet/withdrawals", response_model=WithdrawalHistoryResponse)
-async def get_withdrawal_history(
-    page: int = 1,
-    per_page: int = 20,
-    user=Depends(get_current_user_async)
-):
-    """Get withdrawal history"""
-    user_id = user["user_id"]
-    
-    if page < 1:
-        page = 1
-    if per_page < 1 or per_page > 100:
-        per_page = 20
-    
-    offset = (page - 1) * per_page
-    
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        # Get withdrawal transactions
-        withdrawals_query = """
-            SELECT 
-                ut.transaction_id,
-                ABS(ut.money_change) as amount,
-                ut.created_at
-            FROM user_transactions ut
-            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
-            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
-            ORDER BY ut.created_at DESC
-            LIMIT $2 OFFSET $3
-        """
-        
-        withdrawals = await conn.fetch(withdrawals_query, user_id, per_page, offset)
-        
-        # Get total count
-        total_count = await conn.fetchval(
-            """
-            SELECT COUNT(*)
-            FROM user_transactions ut
-            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
-            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
-            """,
-            user_id
-        )
-        
-        # Get total withdrawn and pending amounts
-        stats = await conn.fetchrow(
-            """
-            SELECT 
-                COALESCE(SUM(ABS(ut.money_change)), 0) as total_withdrawn,
-                COALESCE(SUM(ABS(ut.money_change)), 0) as pending_amount
-            FROM user_transactions ut
-            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
-            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
-            """,
-            user_id
-        )
-        
-        # Format withdrawals
-        withdrawal_list = []
-        for withdrawal in withdrawals:
-            withdrawal_list.append(WithdrawalHistoryItem(
-                transaction_id=withdrawal['transaction_id'],
-                amount=float(withdrawal['amount']),
-                created_at=withdrawal['created_at'],
-                status="pending"  # All withdrawal transactions are pending until processed by admin
-            ))
-        
-        has_next = offset + per_page < total_count
-        has_previous = page > 1
-        
-        return WithdrawalHistoryResponse(
-            withdrawals=withdrawal_list,
-            total_withdrawn=float(stats['total_withdrawn'] or 0),
-            pending_amount=float(stats['pending_amount'] or 0),
-            page=page,
-            per_page=per_page,
-            has_next=has_next,
-            has_previous=has_previous
-        )
-
-@router.put("/wallet/bank-details", response_model=BankDetailsResponse)
-async def update_bank_details(
-    data: BankDetailsUpdate,
-    user=Depends(get_current_user_async)
-):
-    """Update listener's bank details for withdrawals"""
-    user_id = user["user_id"]
-    
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        # Check if listener payout record exists
-        existing = await conn.fetchrow(
-            "SELECT user_id FROM listener_payout WHERE user_id = $1",
-            user_id
-        )
-        
-        if existing:
-            # Update existing record
-            await conn.execute(
-                "UPDATE listener_payout SET payout_account = $1, updated_at = now() WHERE user_id = $2",
-                data.payout_account, user_id
-            )
-        else:
-            # Create new record
-            await conn.execute(
-                "INSERT INTO listener_payout (user_id, payout_account, created_at, updated_at) VALUES ($1, $2, now(), now())",
-                user_id, data.payout_account
-            )
-        
-        return BankDetailsResponse(
-            has_bank_details=True,
-            message="Bank details updated successfully"
-        )
-
-@router.get("/wallet/bank-details", response_model=BankDetailsResponse)
-async def get_bank_details_status(user=Depends(get_current_user_async)):
-    """Check if listener has bank details configured"""
-    user_id = user["user_id"]
-    
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        bank_details = await conn.fetchrow(
-            "SELECT payout_account FROM listener_payout WHERE user_id = $1",
-            user_id
-        )
-        
-        has_details = bank_details is not None and bank_details['payout_account'] is not None
-        
-        return BankDetailsResponse(
-            has_bank_details=has_details,
-            message="Bank details configured" if has_details else "Bank details not configured"
-        )
 
 # Blocking related endpoints
 @router.post("/block", response_model=BlockActionResponse)
@@ -1813,3 +1393,37 @@ async def review_verification(
             message=message,
             verification=verification_response
         )
+
+@router.get("/badge/current")
+async def get_current_badge(user=Depends(get_current_user_async)):
+    """Get current badge for the authenticated listener for today"""
+    user_id = user["user_id"]
+    
+    # Check if user is a listener
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        user_info = await conn.fetchrow(
+            "SELECT user_id, username, is_listener FROM users WHERE user_id = $1",
+            user_id
+        )
+        
+        if not user_info:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not user_info['is_listener']:
+            raise HTTPException(status_code=403, detail="Only listeners can have badges")
+    
+    # Get current badge for today
+    from datetime import date
+    today = date.today()
+    badge_info = await get_current_listener_badge(user_id, today)
+    
+    return {
+        "listener_id": user_id,
+        "username": user_info['username'],
+        "current_badge": badge_info['badge'],
+        "audio_rate_per_minute": badge_info['audio_rate_per_minute'],
+        "video_rate_per_minute": badge_info['video_rate_per_minute'],
+        "assigned_date": badge_info['assigned_date'],
+        "assigned_at": badge_info['assigned_at']
+    }

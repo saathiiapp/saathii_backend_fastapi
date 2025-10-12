@@ -107,8 +107,9 @@ CREATE TABLE IF NOT EXISTS user_blocks (
 CREATE TABLE IF NOT EXISTS listener_badges (
   listener_id INT REFERENCES users(user_id) ON DELETE CASCADE,
   date        DATE NOT NULL,
-  badge       VARCHAR(20) CHECK (badge IN ('platinum','gold','silver','bronze')),
-  rate_per_minute NUMERIC(5,2) NOT NULL,  -- INR per minute
+  badge       VARCHAR(20) CHECK (badge IN ('gold','silver','bronze','basic')),
+  audio_rate_per_minute NUMERIC(5,2) NOT NULL,  -- INR per minute for audio calls
+  video_rate_per_minute NUMERIC(5,2) NOT NULL,  -- INR per minute for video calls
   assigned_at TIMESTAMPTZ DEFAULT now(),
   PRIMARY KEY (listener_id, date),
   updated_at    TIMESTAMPTZ DEFAULT now(),

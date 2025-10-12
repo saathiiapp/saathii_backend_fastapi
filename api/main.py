@@ -1,11 +1,12 @@
 from fastapi import FastAPI
-from app.routes import auth, user, websocket, call
+from app.routes import auth, user, websocket, call, wallet
 from app.clients.websocket_manager import manager
+# Scheduler removed - using external cron jobs instead
 import asyncio
 
 app = FastAPI(
     title="Saathii Backend API",
-    description="A scalable FastAPI backend for the Saathii application with authentication, user management, presence features, and real-time WebSocket updates",
+    description="A scalable FastAPI backend for the Saathii application with authentication, user management, call management, presence features, and real-time WebSocket updates",
     version="1.0.0",
     tags_metadata=[
         {
@@ -14,7 +15,11 @@ app = FastAPI(
         },
         {
             "name": "User Management", 
-            "description": "User profile management, presence tracking, favorites, wallet, blocking, verification, and administrative functions",
+            "description": "User profile management, presence tracking, favorites, blocking, verification, badge system, and administrative functions",
+        },
+        {
+            "name": "Wallet Management",
+            "description": "Wallet operations including balance management, coin transactions, earnings tracking, withdrawals, and bank details management",
         },
         {
             "name": "Call Management",
@@ -29,6 +34,7 @@ app = FastAPI(
 
 app.include_router(auth.router)
 app.include_router(user.router)
+app.include_router(wallet.router)
 app.include_router(websocket.router)
 app.include_router(call.router)
 
@@ -38,13 +44,20 @@ async def startup_event():
     """Initialize services on startup"""
     # Start Redis subscriber for cross-instance communication
     await manager.start_redis_subscriber()
+    
+    # Background tasks handled by external cron jobs
+    
     print("🚀 Saathii Backend API started with real-time WebSocket support!")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
+    # Background tasks handled by external cron jobs
+    
+    # Stop Redis subscriber
     if manager.redis_subscriber:
         await manager.redis_subscriber.unsubscribe("status_updates")
         await manager.redis_subscriber.close()
+    
     print("👋 Saathii Backend API shutdown complete!")

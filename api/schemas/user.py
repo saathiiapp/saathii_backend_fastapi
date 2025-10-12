@@ -145,7 +145,65 @@ class FavoriteActionResponse(BaseModel):
     listener_id: int
     is_favorited: bool
 
-# Wallet and withdrawal related schemas
+# Simplified Wallet schemas
+class UserBalanceResponse(BaseModel):
+    user_id: int
+    balance_coins: int
+
+class AddCoinRequest(BaseModel):
+    coins: int = Field(..., gt=0, description="Number of coins to add")
+    tx_type: str = Field(default="purchase", description="Transaction type")
+    money_amount: float = Field(default=0.0, description="Money amount associated")
+
+class AddCoinResponse(BaseModel):
+    transaction_id: int
+    coins_added: int
+    new_balance: int
+    message: str
+    created_at: datetime
+
+class RechargeTransaction(BaseModel):
+    transaction_id: int
+    coins_added: int
+    money_amount: float
+    tx_type: str
+    created_at: datetime
+
+class RechargeHistoryResponse(BaseModel):
+    transactions: List[RechargeTransaction]
+    total_coins_added: int
+    total_money_spent: float
+    page: int
+    per_page: int
+    has_next: bool
+    has_previous: bool
+
+class ListenerBalanceResponse(BaseModel):
+    user_id: int
+    withdrawable_money: float
+    total_earned: float
+
+class ListenerEarning(BaseModel):
+    call_id: int
+    user_id: int
+    listener_id: int
+    call_type: str
+    start_time: datetime
+    end_time: Optional[datetime]
+    duration_minutes: Optional[int]
+    money_earned: float
+    created_at: datetime
+
+class ListenerEarningsResponse(BaseModel):
+    earnings: List[ListenerEarning]
+    total_earned: float
+    total_calls: int
+    page: int
+    per_page: int
+    has_next: bool
+    has_previous: bool
+
+# Legacy wallet schemas (to be removed)
 class WalletBalanceResponse(BaseModel):
     user_id: int
     balance_coins: int
