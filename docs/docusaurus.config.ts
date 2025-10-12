@@ -6,9 +6,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Saathii Backend API',
-  tagline: 'A scalable FastAPI backend for the Saathii application with authentication, user management, presence features, and real-time WebSocket updates.',
+  tagline: 'Because being heard changes everything.',
   favicon: 'img/favicon.ico',
-  logo: 'img/logo.png',
 
   // Future flags for improved compatibility
   future: {
@@ -64,8 +63,8 @@ const config: Config = {
     navbar: {
       title: 'Saathii API',
       logo: {
-        alt: 'Saathii API Logo',
-        src: 'img/logo.svg',
+        alt: 'Saathii Logo',
+        src: 'img/logo.png',
       },
       items: [
         {
@@ -161,6 +160,17 @@ const config: Config = {
         },
       ],
       copyright: `Copyright © ${new Date().getFullYear()} Saathii. All rights reserved.`,
+      links: [
+        {
+          title: 'Mission',
+          items: [
+            {
+              label: 'Because being heard changes everything.',
+              to: '/docs/intro',
+            },
+          ],
+        },
+      ],
     },
     prism: {
       theme: prismThemes.github,
