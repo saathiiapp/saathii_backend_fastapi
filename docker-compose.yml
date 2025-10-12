@@ -27,6 +27,33 @@ services:
     ports:
       - "6379:6379"
 
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    container_name: saathii-api-docs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      # Router for HTTPS
+      - "traefik.http.routers.docs.rule=Host(`docs.saathiiapp.com`)"
+      - "traefik.http.routers.docs.entrypoints=websecure"
+      - "traefik.http.routers.docs.tls.certresolver=myresolver"
+      # Redirect HTTP -> HTTPS
+      - "traefik.http.routers.docs-http.rule=Host(`docs.saathiiapp.com`)"
+      - "traefik.http.routers.docs-http.entrypoints=web"
+      - "traefik.http.routers.docs-http.middlewares=redirect-to-https"
+      # Service port (nginx inside container)
+      - "traefik.http.services.docs.loadbalancer.server.port=80"
+    ports:
+      - "8081:80"  # Local development port
+
   traefik:
     image: traefik:v2.10
     command:

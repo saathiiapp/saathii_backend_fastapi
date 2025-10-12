@@ -119,3 +119,43 @@ class RechargeHistoryResponse(BaseModel):
     per_page: int
     has_next: bool
     has_previous: bool
+
+class TransactionType(str, Enum):
+    PURCHASE = "purchase"
+    SPEND = "spend"
+    EARN = "earn"
+    WITHDRAW = "withdraw"
+    BONUS = "bonus"
+    REFERRAL_BONUS = "referral_bonus"
+
+class TransactionInfo(BaseModel):
+    transaction_id: int
+    tx_type: TransactionType
+    coins_change: int
+    money_change: float
+    description: str
+    call_id: Optional[int] = None
+    created_at: datetime
+
+class UserTransactionHistoryResponse(BaseModel):
+    transactions: list[TransactionInfo]
+    total_coins_spent: int
+    total_money_spent: float
+    total_coins_earned: int
+    total_money_earned: float
+    current_balance: int
+    page: int
+    per_page: int
+    has_next: bool
+    has_previous: bool
+
+class ListenerTransactionHistoryResponse(BaseModel):
+    transactions: list[TransactionInfo]
+    total_coins_earned: int
+    total_money_earned: float
+    total_calls_completed: int
+    current_withdrawable_balance: float
+    page: int
+    per_page: int
+    has_next: bool
+    has_previous: bool

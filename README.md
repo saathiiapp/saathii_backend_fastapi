@@ -9,6 +9,11 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 - **User Profile Management** with comprehensive user data
 - **Real-time Presence Tracking** with WebSocket support
 - **Feed System** for discovering listeners with real-time updates
+- **Listener Verification System** with audio sample uploads
+- **S3 File Upload** for verification audio files
+- **Call Management** with coin-based billing system
+- **Wallet & Earnings** system for listeners
+- **Favorites & Blocking** functionality
 - **Scalable Architecture** with Redis pub/sub for multiple instances
 - **Comprehensive API Documentation** with Swagger UI
 
@@ -19,6 +24,8 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 - [User Management](#user-management)
 - [Presence & Status](#presence--status)
 - [Feed System](#feed-system)
+- [Listener Verification](#listener-verification)
+- [S3 File Upload](#s3-file-upload)
 - [Call Management](#call-management)
 - [WebSocket Real-time Updates](#websocket-real-time-updates)
 - [React Native Integration](#react-native-integration)
@@ -289,6 +296,179 @@ A scalable FastAPI backend for the Saathii application with authentication, user
   "busy_listeners": 7
 }
 ```
+
+## Listener Verification
+
+### Overview
+The listener verification system allows listeners to upload audio samples for verification before they can start working. This ensures quality control and authenticity of listeners on the platform.
+
+### Verification Endpoints
+
+#### 1. Upload Audio File (Direct Upload)
+- **Endpoint**: `POST /verification/upload-audio-file`
+- **Tags**: Listener Verification
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Content-Type**: `multipart/form-data`
+- **Body**: Audio file (mp3, wav, m4a, etc.)
+- **Max file size**: 10MB
+- **Response**: `200` - Verification record created
+```json
+{
+  "sample_id": 1,
+  "listener_id": 123,
+  "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/verification-audio/123/20240115_103000_abc12345.mp3",
+  "status": "pending",
+  "remarks": null,
+  "uploaded_at": "2024-01-15T10:30:00Z",
+  "reviewed_at": null
+}
+```
+
+#### 2. Upload Audio URL (External Upload)
+- **Endpoint**: `POST /verification/upload-audio-url`
+- **Tags**: Listener Verification
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Body**:
+```json
+{
+  "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/verification-audio/123/20240115_103000_abc12345.mp3"
+}
+```
+- **Response**: `200` - Verification record created
+
+#### 3. Check Verification Status
+- **Endpoint**: `GET /verification/status`
+- **Tags**: Listener Verification
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - Current verification status
+```json
+{
+  "is_verified": false,
+  "verification_status": "pending",
+  "last_verification": {
+    "sample_id": 1,
+    "listener_id": 123,
+    "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/verification-audio/123/20240115_103000_abc12345.mp3",
+    "status": "pending",
+    "remarks": null,
+    "uploaded_at": "2024-01-15T10:30:00Z",
+    "reviewed_at": null
+  },
+  "message": "Verification status: pending"
+}
+```
+
+#### 4. Get Verification History
+- **Endpoint**: `GET /verification/history`
+- **Tags**: Listener Verification
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - Array of verification records
+
+### Admin Verification Endpoints
+
+#### 1. Get Pending Verifications
+- **Endpoint**: `GET /admin/verification/pending`
+- **Tags**: Admin - Verification
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Query Parameters**:
+  - `page` (int): Page number (default: 1)
+  - `per_page` (int): Items per page (default: 20, max: 100)
+- **Response**: `200` - Array of pending verification requests
+
+#### 2. Review Verification
+- **Endpoint**: `POST /admin/verification/review`
+- **Tags**: Admin - Verification
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Body**:
+```json
+{
+  "sample_id": 1,
+  "status": "approved",
+  "remarks": "Audio quality is good, voice is clear and professional"
+}
+```
+- **Response**: `200` - Review completed
+```json
+{
+  "success": true,
+  "message": "Verification approved successfully with remarks: Audio quality is good, voice is clear and professional",
+  "verification": {
+    "sample_id": 1,
+    "listener_id": 123,
+    "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/verification-audio/123/20240115_103000_abc12345.mp3",
+    "status": "approved",
+    "remarks": "Audio quality is good, voice is clear and professional",
+    "uploaded_at": "2024-01-15T10:30:00Z",
+    "reviewed_at": "2024-01-15T14:45:00Z"
+  }
+}
+```
+
+### Verification Statuses
+- **pending**: Awaiting admin review
+- **approved**: Verification approved, listener can work
+- **rejected**: Verification rejected, needs new audio sample
+
+### Security Features
+- ✅ **Role-based access**: Only listeners can upload, only admins can review
+- ✅ **File validation**: Audio files only, 10MB size limit
+- ✅ **Pending prevention**: One pending verification per listener
+- ✅ **S3 integration**: Secure file storage with metadata tracking
+
+## S3 File Upload
+
+### Overview
+The system supports direct file uploads to AWS S3 for listener verification audio samples. Files are organized by user and include metadata for tracking.
+
+### S3 Configuration
+
+#### Environment Variables
+```bash
+AWS_ACCESS_KEY_ID=your-aws-access-key-id
+AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=your-s3-bucket-name
+```
+
+#### File Organization
+```
+S3 Bucket Structure:
+bucket-name/
+└── verification-audio/
+    └── {user_id}/
+        └── {timestamp}_{unique_id}.{extension}
+```
+
+Example: `verification-audio/123/20240115_103000_abc12345.mp3`
+
+### Upload Methods
+
+#### 1. Direct File Upload
+- **Endpoint**: `POST /verification/upload-audio-file`
+- **Method**: Multipart form data
+- **Features**:
+  - Automatic S3 upload
+  - File type validation (audio only)
+  - Size limit enforcement (10MB)
+  - Unique file naming
+  - Metadata tracking
+
+#### 2. S3 URL Submission
+- **Endpoint**: `POST /verification/upload-audio-url`
+- **Method**: JSON with S3 URL
+- **Use case**: External uploads or pre-uploaded files
+
+### Security & Validation
+- **File Type**: Only audio files (mp3, wav, m4a, etc.)
+- **File Size**: Maximum 10MB per file
+- **User Role**: Only users with 'listener' role can upload
+- **Pending Check**: Prevents multiple pending verifications
+- **S3 Metadata**: Includes user_id and upload metadata
+
+### Error Handling
+- **403 Forbidden**: User doesn't have listener role
+- **400 Bad Request**: Invalid file type, size, or existing pending verification
+- **500 Internal Server Error**: S3 configuration issues or upload failures
 
 ## Call Management
 
@@ -1425,6 +1605,47 @@ curl -X GET 'http://localhost:8000/calls/status' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>'
 ```
 
+**Upload Audio File for Verification**
+```bash
+curl -X POST 'http://localhost:8000/verification/upload-audio-file' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
+  -F 'audio_file=@/path/to/audio.mp3'
+```
+
+**Upload Audio URL for Verification**
+```bash
+curl -X POST 'http://localhost:8000/verification/upload-audio-url' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{"audio_file_url": "https://bucket.s3.region.amazonaws.com/audio.mp3"}'
+```
+
+**Check Verification Status**
+```bash
+curl -X GET 'http://localhost:8000/verification/status' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+```
+
+**Get Verification History**
+```bash
+curl -X GET 'http://localhost:8000/verification/history' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+```
+
+**Get Pending Verifications (Admin)**
+```bash
+curl -X GET 'http://localhost:8000/admin/verification/pending?page=1&per_page=20' \
+  -H 'Authorization: Bearer <ADMIN_ACCESS_TOKEN>'
+```
+
+**Review Verification (Admin)**
+```bash
+curl -X POST 'http://localhost:8000/admin/verification/review' \
+  -H 'Authorization: Bearer <ADMIN_ACCESS_TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{"sample_id": 1, "status": "approved", "remarks": "Audio quality is good"}'
+```
+
 ## Swagger Documentation
 
 The API includes comprehensive Swagger documentation available at:
@@ -1435,7 +1656,10 @@ The API includes comprehensive Swagger documentation available at:
 
 1. **Authentication** - OTP verification, registration, and token management
 2. **User Management** - Profile management, presence tracking, and feed system
-3. **WebSocket** - Real-time WebSocket connections for live updates
+3. **Listener Verification** - Audio sample uploads and verification workflow
+4. **Admin - Verification** - Admin review and approval of verification requests
+5. **Call Management** - Call lifecycle, billing, and coin management
+6. **WebSocket** - Real-time WebSocket connections for live updates
 
 ## 🚀 Getting Started
 
@@ -1448,7 +1672,16 @@ pip install -r requirements.txt
 ```bash
 export REDIS_URL="redis://localhost:6379"
 export DATABASE_URL="postgresql://user:password@localhost/saathii"
-export SECRET_KEY="your-secret-key"
+export JWT_SECRET_KEY="your-secret-key"
+export JWT_ALGORITHM="HS256"
+export JWT_ACCESS_TOKEN_EXPIRE_MINUTES="30"
+export JWT_REFRESH_TOKEN_EXPIRE_DAYS="7"
+
+# AWS S3 Configuration (for file uploads)
+export AWS_ACCESS_KEY_ID="your-aws-access-key-id"
+export AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"
+export AWS_REGION="us-east-1"
+export S3_BUCKET_NAME="your-s3-bucket-name"
 ```
 
 3. **Run the Server**
@@ -1460,12 +1693,18 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - Open `http://localhost:8000/docs` for Swagger UI
 - Open `http://localhost:8000/redoc` for ReDoc
 
+5. **S3 Setup (Optional)**
+- See `S3_SETUP.md` for detailed AWS S3 configuration
+- Required for listener verification audio uploads
+
 ## 🔧 Features
 
 - ✅ **Real-time Updates**: WebSocket support for instant status updates
 - ✅ **Scalable Architecture**: Redis pub/sub for multiple server instances
 - ✅ **Comprehensive API**: Full CRUD operations for users and presence
 - ✅ **Feed System**: Advanced filtering and pagination for listener discovery
+- ✅ **Listener Verification**: Audio sample uploads with admin review workflow
+- ✅ **S3 File Upload**: Direct file uploads to AWS S3 with validation
 - ✅ **Call Management**: Complete call lifecycle with coin-based billing
 - ✅ **Coin System**: Wallet integration with transaction tracking
 - ✅ **Token Management**: Secure JWT with refresh token rotation

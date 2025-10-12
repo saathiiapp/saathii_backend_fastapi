@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Form
+from typing import List, Optional
 import time
+from datetime import datetime
 from app.clients.redis_client import redis_client
 from app.clients.db import get_db_pool
 from app.clients.jwt_handler import decode_jwt
+from app.clients.s3_client import s3_client
 from app.utils.presence import mark_inactive_users_offline, cleanup_expired_busy_status
 from app.utils.realtime import broadcast_user_status_update, get_user_status_for_broadcast
 from app.schemas.user import (
@@ -15,7 +17,32 @@ from app.schemas.user import (
     UserPresenceResponse,
     ListenerFeedItem,
     FeedResponse,
-    FeedFilters
+    FeedFilters,
+    AddFavoriteRequest,
+    RemoveFavoriteRequest,
+    FavoriteUser,
+    FavoritesResponse,
+    FavoriteActionResponse,
+    WalletBalanceResponse,
+    CallEarning,
+    CallEarningsResponse,
+    WithdrawalRequest,
+    WithdrawalResponse,
+    WithdrawalHistoryItem,
+    WithdrawalHistoryResponse,
+    BankDetailsUpdate,
+    BankDetailsResponse,
+    BlockUserRequest,
+    UnblockUserRequest,
+    BlockActionResponse,
+    BlockedUser,
+    BlockedUsersResponse,
+    UploadAudioRequest,
+    ListenerVerificationResponse,
+    VerificationStatusResponse,
+    AdminReviewRequest,
+    AdminReviewResponse,
+    ListenerVerificationStatus
 )
 
 router = APIRouter(tags=["User Management"])
@@ -346,7 +373,9 @@ async def get_listeners_feed(
             FROM users u
             LEFT JOIN user_roles ur ON u.user_id = ur.user_id
             LEFT JOIN user_status us ON u.user_id = us.user_id
+            LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
             WHERE u.user_id != $1  -- Exclude current user
+            AND ub.blocked_id IS NULL  -- Exclude blocked users
         """
         
         # Build WHERE conditions
@@ -401,7 +430,8 @@ async def get_listeners_feed(
             SELECT COUNT(DISTINCT u.user_id)
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
-            WHERE {' AND '.join(conditions)}
+            LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
+            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL
         """
         
         total_count = await conn.fetchval(count_query, *params)
@@ -411,7 +441,8 @@ async def get_listeners_feed(
             SELECT COUNT(DISTINCT u.user_id)
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
-            WHERE {' AND '.join(conditions)} AND us.is_online = true
+            LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
+            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL AND us.is_online = true
         """
         online_count = await conn.fetchval(online_count_query, *params)
         
@@ -419,7 +450,8 @@ async def get_listeners_feed(
             SELECT COUNT(DISTINCT u.user_id)
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
-            WHERE {' AND '.join(conditions)} AND us.is_online = true AND us.is_busy = false
+            LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
+            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL AND us.is_online = true AND us.is_busy = false
         """
         available_count = await conn.fetchval(available_count_query, *params)
         
@@ -510,3 +542,1208 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
             "available_listeners": available_count,
             "busy_listeners": online_count - available_count
         }
+
+@router.post("/favorites/add", response_model=FavoriteActionResponse, tags=["Favorites"])
+async def add_favorite(
+    data: AddFavoriteRequest,
+    user=Depends(get_current_user_async)
+):
+    """Add a listener to favorites"""
+    user_id = user["user_id"]
+    listener_id = data.listener_id
+    
+    # Prevent self-favorite
+    if user_id == listener_id:
+        raise HTTPException(status_code=400, detail="Cannot favorite yourself")
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if listener exists and has listener role
+        listener = await conn.fetchrow(
+            """
+            SELECT u.user_id, u.username
+            FROM users u
+            JOIN user_roles ur ON u.user_id = ur.user_id
+            WHERE u.user_id = $1 AND ur.role = 'listener' AND ur.active = true
+            """,
+            listener_id
+        )
+        
+        if not listener:
+            raise HTTPException(status_code=404, detail="Listener not found")
+        
+        # Check if already favorited
+        existing = await conn.fetchrow(
+            "SELECT favoriter_id FROM user_favorites WHERE favoriter_id = $1 AND favoritee_id = $2",
+            user_id, listener_id
+        )
+        
+        if existing:
+            return FavoriteActionResponse(
+                success=True,
+                message=f"Already favorited {listener['username'] or 'this listener'}",
+                listener_id=listener_id,
+                is_favorited=True
+            )
+        
+        # Add to favorites
+        await conn.execute(
+            """
+            INSERT INTO user_favorites (favoriter_id, favoritee_id, created_at, updated_at)
+            VALUES ($1, $2, now(), now())
+            """,
+            user_id, listener_id
+        )
+        
+        return FavoriteActionResponse(
+            success=True,
+            message=f"Successfully added {listener['username'] or 'listener'} to favorites",
+            listener_id=listener_id,
+            is_favorited=True
+        )
+
+@router.delete("/favorites/remove", response_model=FavoriteActionResponse, tags=["Favorites"])
+async def remove_favorite(
+    data: RemoveFavoriteRequest,
+    user=Depends(get_current_user_async)
+):
+    """Remove a listener from favorites"""
+    user_id = user["user_id"]
+    listener_id = data.listener_id
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if listener exists
+        listener = await conn.fetchrow(
+            "SELECT username FROM users WHERE user_id = $1",
+            listener_id
+        )
+        
+        if not listener:
+            raise HTTPException(status_code=404, detail="Listener not found")
+        
+        # Check if favorited
+        existing = await conn.fetchrow(
+            "SELECT favoriter_id FROM user_favorites WHERE favoriter_id = $1 AND favoritee_id = $2",
+            user_id, listener_id
+        )
+        
+        if not existing:
+            return FavoriteActionResponse(
+                success=True,
+                message=f"{listener['username'] or 'Listener'} was not in favorites",
+                listener_id=listener_id,
+                is_favorited=False
+            )
+        
+        # Remove from favorites
+        await conn.execute(
+            "DELETE FROM user_favorites WHERE favoriter_id = $1 AND favoritee_id = $2",
+            user_id, listener_id
+        )
+        
+        return FavoriteActionResponse(
+            success=True,
+            message=f"Successfully removed {listener['username'] or 'listener'} from favorites",
+            listener_id=listener_id,
+            is_favorited=False
+        )
+
+@router.get("/favorites", response_model=FavoritesResponse, tags=["Favorites"])
+async def get_favorites(
+    page: int = 1,
+    per_page: int = 20,
+    online_only: bool = False,
+    available_only: bool = False,
+    user=Depends(get_current_user_async)
+):
+    """Get user's favorite listeners"""
+    user_id = user["user_id"]
+    
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 20
+    
+    offset = (page - 1) * per_page
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Build base query
+        base_query = """
+            FROM user_favorites uf
+            JOIN users u ON uf.favoritee_id = u.user_id
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            WHERE uf.favoriter_id = $1
+        """
+        params = [user_id]
+        param_count = 1
+        
+        # Add filters
+        if online_only:
+            param_count += 1
+            base_query += f" AND us.is_online = ${param_count}"
+            params.append(True)
+        
+        if available_only:
+            param_count += 1
+            base_query += f" AND us.is_online = ${param_count} AND us.is_busy = ${param_count + 1}"
+            params.extend([True, False])
+            param_count += 1
+        
+        # Get total count
+        count_query = f"SELECT COUNT(*) {base_query}"
+        total_count = await conn.fetchval(count_query, *params)
+        
+        # Get favorites with pagination
+        favorites_query = f"""
+            SELECT 
+                u.user_id,
+                u.username,
+                u.sex,
+                u.bio,
+                u.interests,
+                u.profile_image_url,
+                u.preferred_language,
+                u.rating,
+                u.country,
+                us.is_online,
+                us.last_seen,
+                us.is_busy,
+                us.busy_until,
+                uf.created_at as favorited_at
+            {base_query}
+            ORDER BY uf.created_at DESC
+            LIMIT ${param_count + 1} OFFSET ${param_count + 2}
+        """
+        params.extend([per_page, offset])
+        
+        favorites = await conn.fetch(favorites_query, *params)
+        
+        # Get online count
+        online_count_query = f"""
+            SELECT COUNT(*) 
+            {base_query}
+            AND us.is_online = true
+        """
+        online_count = await conn.fetchval(online_count_query, *params[:param_count])
+        
+        # Get available count (online and not busy)
+        available_count_query = f"""
+            SELECT COUNT(*) 
+            {base_query}
+            AND us.is_online = true AND us.is_busy = false
+        """
+        available_count = await conn.fetchval(available_count_query, *params[:param_count])
+        
+        # Format favorites
+        favorite_list = []
+        for fav in favorites:
+            is_available = fav['is_online'] and not fav['is_busy']
+            favorite_list.append(FavoriteUser(
+                user_id=fav['user_id'],
+                username=fav['username'],
+                sex=fav['sex'],
+                bio=fav['bio'],
+                interests=fav['interests'],
+                profile_image_url=fav['profile_image_url'],
+                preferred_language=fav['preferred_language'],
+                rating=fav['rating'],
+                country=fav['country'],
+                is_online=fav['is_online'] or False,
+                last_seen=fav['last_seen'] or datetime.now(),
+                is_busy=fav['is_busy'] or False,
+                busy_until=fav['busy_until'],
+                is_available=is_available,
+                favorited_at=fav['favorited_at']
+            ))
+        
+        has_next = offset + per_page < total_count
+        has_previous = page > 1
+        
+        return FavoritesResponse(
+            favorites=favorite_list,
+            total_count=total_count,
+            online_count=online_count or 0,
+            available_count=available_count or 0,
+            page=page,
+            per_page=per_page,
+            has_next=has_next,
+            has_previous=has_previous
+        )
+
+@router.get("/favorites/check/{listener_id}", response_model=FavoriteActionResponse, tags=["Favorites"])
+async def check_favorite_status(
+    listener_id: int,
+    user=Depends(get_current_user_async)
+):
+    """Check if a listener is in user's favorites"""
+    user_id = user["user_id"]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if favorited
+        existing = await conn.fetchrow(
+            "SELECT favoriter_id FROM user_favorites WHERE favoriter_id = $1 AND favoritee_id = $2",
+            user_id, listener_id
+        )
+        
+        # Get listener info
+        listener = await conn.fetchrow(
+            "SELECT username FROM users WHERE user_id = $1",
+            listener_id
+        )
+        
+        if not listener:
+            raise HTTPException(status_code=404, detail="Listener not found")
+        
+        is_favorited = existing is not None
+        
+        return FavoriteActionResponse(
+            success=True,
+            message=f"{listener['username'] or 'Listener'} is {'in' if is_favorited else 'not in'} favorites",
+            listener_id=listener_id,
+            is_favorited=is_favorited
+        )
+
+# Wallet and withdrawal related endpoints
+@router.get("/wallet/balance", response_model=WalletBalanceResponse, tags=["Wallet"])
+async def get_wallet_balance(user=Depends(get_current_user_async)):
+    """Get listener's wallet balance and earnings summary"""
+    user_id = user["user_id"]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get wallet information
+        wallet = await conn.fetchrow(
+            """
+            SELECT balance_coins, withdrawable_money
+            FROM user_wallets 
+            WHERE user_id = $1
+            """,
+            user_id
+        )
+        
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+        
+        # Get total earned from transactions
+        total_earned = await conn.fetchval(
+            """
+            SELECT COALESCE(SUM(money_change), 0)
+            FROM user_transactions ut
+            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
+            WHERE uw.user_id = $1 AND ut.tx_type = 'earn'
+            """,
+            user_id
+        )
+        
+        # Get total withdrawn from transactions
+        total_withdrawn = await conn.fetchval(
+            """
+            SELECT COALESCE(SUM(ABS(money_change)), 0)
+            FROM user_transactions ut
+            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
+            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
+            """,
+            user_id
+        )
+        
+        # Get pending withdrawals (withdraw transactions that haven't been processed)
+        pending_withdrawals = await conn.fetchval(
+            """
+            SELECT COALESCE(SUM(ABS(money_change)), 0)
+            FROM user_transactions ut
+            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
+            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
+            """,
+            user_id
+        )
+        
+        return WalletBalanceResponse(
+            user_id=user_id,
+            balance_coins=wallet['balance_coins'],
+            withdrawable_money=float(wallet['withdrawable_money']),
+            total_earned=float(total_earned or 0),
+            total_withdrawn=float(total_withdrawn or 0),
+            pending_withdrawals=float(pending_withdrawals or 0)
+        )
+
+@router.get("/wallet/earnings", response_model=CallEarningsResponse, tags=["Wallet"])
+async def get_call_earnings(
+    page: int = 1,
+    per_page: int = 20,
+    user=Depends(get_current_user_async)
+):
+    """Get listener's earnings from individual calls"""
+    user_id = user["user_id"]
+    
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 20
+    
+    offset = (page - 1) * per_page
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get call earnings with pagination
+        earnings_query = """
+            SELECT 
+                uc.call_id,
+                uc.user_id,
+                uc.listener_id,
+                uc.call_type,
+                uc.start_time,
+                uc.end_time,
+                uc.duration_minutes,
+                uc.listener_money_earned,
+                uc.coins_spent,
+                uc.status
+            FROM user_calls uc
+            WHERE uc.listener_id = $1 AND uc.status = 'completed'
+            ORDER BY uc.start_time DESC
+            LIMIT $2 OFFSET $3
+        """
+        
+        earnings = await conn.fetch(earnings_query, user_id, per_page, offset)
+        
+        # Get total count
+        total_calls = await conn.fetchval(
+            "SELECT COUNT(*) FROM user_calls WHERE listener_id = $1 AND status = 'completed'",
+            user_id
+        )
+        
+        # Get total earnings
+        total_earnings = await conn.fetchval(
+            "SELECT COALESCE(SUM(listener_money_earned), 0) FROM user_calls WHERE listener_id = $1 AND status = 'completed'",
+            user_id
+        )
+        
+        # Format earnings
+        earnings_list = []
+        for earning in earnings:
+            earnings_list.append(CallEarning(
+                call_id=earning['call_id'],
+                user_id=earning['user_id'],
+                listener_id=earning['listener_id'],
+                call_type=earning['call_type'],
+                start_time=earning['start_time'],
+                end_time=earning['end_time'],
+                duration_minutes=earning['duration_minutes'],
+                money_earned=float(earning['listener_money_earned']),
+                coins_earned=earning['coins_spent'],  # This represents the coins that were spent by user
+                status=earning['status']
+            ))
+        
+        has_next = offset + per_page < total_calls
+        has_previous = page > 1
+        
+        return CallEarningsResponse(
+            earnings=earnings_list,
+            total_earnings=float(total_earnings or 0),
+            total_calls=total_calls,
+            page=page,
+            per_page=per_page,
+            has_next=has_next,
+            has_previous=has_previous
+        )
+
+@router.post("/wallet/withdraw", response_model=WithdrawalResponse, tags=["Wallet"])
+async def request_withdrawal(
+    data: WithdrawalRequest,
+    user=Depends(get_current_user_async)
+):
+    """Request withdrawal from wallet"""
+    user_id = user["user_id"]
+    amount = data.amount
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get wallet information
+        wallet = await conn.fetchrow(
+            "SELECT wallet_id, withdrawable_money FROM user_wallets WHERE user_id = $1",
+            user_id
+        )
+        
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+        
+        # Check if user has sufficient balance
+        if amount > wallet['withdrawable_money']:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient balance. Available: ₹{wallet['withdrawable_money']:.2f}, Requested: ₹{amount:.2f}"
+            )
+        
+        # Check if user has bank details
+        bank_details = await conn.fetchrow(
+            "SELECT payout_account FROM listener_payout WHERE user_id = $1",
+            user_id
+        )
+        
+        if not bank_details or not bank_details['payout_account']:
+            raise HTTPException(
+                status_code=400,
+                detail="Bank details not found. Please add your bank details before requesting withdrawal."
+            )
+        
+        # Create withdrawal transaction
+        transaction = await conn.fetchrow(
+            """
+            INSERT INTO user_transactions (wallet_id, tx_type, money_change, created_at)
+            VALUES ($1, 'withdraw', -$2, now())
+            RETURNING transaction_id, created_at
+            """,
+            wallet['wallet_id'], amount
+        )
+        
+        return WithdrawalResponse(
+            transaction_id=transaction['transaction_id'],
+            amount=amount,
+            message=f"Withdrawal request of ₹{amount:.2f} submitted successfully",
+            created_at=transaction['created_at']
+        )
+
+@router.get("/wallet/withdrawals", response_model=WithdrawalHistoryResponse, tags=["Wallet"])
+async def get_withdrawal_history(
+    page: int = 1,
+    per_page: int = 20,
+    user=Depends(get_current_user_async)
+):
+    """Get withdrawal history"""
+    user_id = user["user_id"]
+    
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 20
+    
+    offset = (page - 1) * per_page
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get withdrawal transactions
+        withdrawals_query = """
+            SELECT 
+                ut.transaction_id,
+                ABS(ut.money_change) as amount,
+                ut.created_at
+            FROM user_transactions ut
+            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
+            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
+            ORDER BY ut.created_at DESC
+            LIMIT $2 OFFSET $3
+        """
+        
+        withdrawals = await conn.fetch(withdrawals_query, user_id, per_page, offset)
+        
+        # Get total count
+        total_count = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM user_transactions ut
+            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
+            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
+            """,
+            user_id
+        )
+        
+        # Get total withdrawn and pending amounts
+        stats = await conn.fetchrow(
+            """
+            SELECT 
+                COALESCE(SUM(ABS(ut.money_change)), 0) as total_withdrawn,
+                COALESCE(SUM(ABS(ut.money_change)), 0) as pending_amount
+            FROM user_transactions ut
+            JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id
+            WHERE uw.user_id = $1 AND ut.tx_type = 'withdraw'
+            """,
+            user_id
+        )
+        
+        # Format withdrawals
+        withdrawal_list = []
+        for withdrawal in withdrawals:
+            withdrawal_list.append(WithdrawalHistoryItem(
+                transaction_id=withdrawal['transaction_id'],
+                amount=float(withdrawal['amount']),
+                created_at=withdrawal['created_at'],
+                status="pending"  # All withdrawal transactions are pending until processed by admin
+            ))
+        
+        has_next = offset + per_page < total_count
+        has_previous = page > 1
+        
+        return WithdrawalHistoryResponse(
+            withdrawals=withdrawal_list,
+            total_withdrawn=float(stats['total_withdrawn'] or 0),
+            pending_amount=float(stats['pending_amount'] or 0),
+            page=page,
+            per_page=per_page,
+            has_next=has_next,
+            has_previous=has_previous
+        )
+
+@router.put("/wallet/bank-details", response_model=BankDetailsResponse, tags=["Wallet"])
+async def update_bank_details(
+    data: BankDetailsUpdate,
+    user=Depends(get_current_user_async)
+):
+    """Update listener's bank details for withdrawals"""
+    user_id = user["user_id"]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if listener payout record exists
+        existing = await conn.fetchrow(
+            "SELECT user_id FROM listener_payout WHERE user_id = $1",
+            user_id
+        )
+        
+        if existing:
+            # Update existing record
+            await conn.execute(
+                "UPDATE listener_payout SET payout_account = $1, updated_at = now() WHERE user_id = $2",
+                data.payout_account, user_id
+            )
+        else:
+            # Create new record
+            await conn.execute(
+                "INSERT INTO listener_payout (user_id, payout_account, created_at, updated_at) VALUES ($1, $2, now(), now())",
+                user_id, data.payout_account
+            )
+        
+        return BankDetailsResponse(
+            has_bank_details=True,
+            message="Bank details updated successfully"
+        )
+
+@router.get("/wallet/bank-details", response_model=BankDetailsResponse, tags=["Wallet"])
+async def get_bank_details_status(user=Depends(get_current_user_async)):
+    """Check if listener has bank details configured"""
+    user_id = user["user_id"]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        bank_details = await conn.fetchrow(
+            "SELECT payout_account FROM listener_payout WHERE user_id = $1",
+            user_id
+        )
+        
+        has_details = bank_details is not None and bank_details['payout_account'] is not None
+        
+        return BankDetailsResponse(
+            has_bank_details=has_details,
+            message="Bank details configured" if has_details else "Bank details not configured"
+        )
+
+# Blocking related endpoints
+@router.post("/block", response_model=BlockActionResponse, tags=["Blocking"])
+async def block_user(
+    data: BlockUserRequest,
+    user=Depends(get_current_user_async)
+):
+    """Block a user"""
+    user_id = user["user_id"]
+    blocked_id = data.blocked_id
+    action_type = data.action_type
+    reason = data.reason
+    
+    # Prevent self-blocking
+    if user_id == blocked_id:
+        raise HTTPException(status_code=400, detail="Cannot block yourself")
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if user to be blocked exists
+        blocked_user = await conn.fetchrow(
+            "SELECT user_id, username FROM users WHERE user_id = $1",
+            blocked_id
+        )
+        
+        if not blocked_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if already blocked
+        existing = await conn.fetchrow(
+            "SELECT blocker_id FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2",
+            user_id, blocked_id
+        )
+        
+        if existing:
+            return BlockActionResponse(
+                success=True,
+                message=f"Already blocked {blocked_user['username'] or 'this user'}",
+                blocked_id=blocked_id,
+                action_type=action_type,
+                is_blocked=True
+            )
+        
+        # Block the user
+        await conn.execute(
+            """
+            INSERT INTO user_blocks (blocker_id, blocked_id, action_type, reason, created_at)
+            VALUES ($1, $2, $3, $4, now())
+            """,
+            user_id, blocked_id, action_type, reason
+        )
+        
+        return BlockActionResponse(
+            success=True,
+            message=f"Successfully blocked {blocked_user['username'] or 'user'}",
+            blocked_id=blocked_id,
+            action_type=action_type,
+            is_blocked=True
+        )
+
+@router.delete("/block", response_model=BlockActionResponse, tags=["Blocking"])
+async def unblock_user(
+    data: UnblockUserRequest,
+    user=Depends(get_current_user_async)
+):
+    """Unblock a user"""
+    user_id = user["user_id"]
+    blocked_id = data.blocked_id
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if user exists
+        blocked_user = await conn.fetchrow(
+            "SELECT username FROM users WHERE user_id = $1",
+            blocked_id
+        )
+        
+        if not blocked_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if blocked
+        existing = await conn.fetchrow(
+            "SELECT action_type FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2",
+            user_id, blocked_id
+        )
+        
+        if not existing:
+            return BlockActionResponse(
+                success=True,
+                message=f"{blocked_user['username'] or 'User'} was not blocked",
+                blocked_id=blocked_id,
+                action_type="unblock",
+                is_blocked=False
+            )
+        
+        # Unblock the user
+        await conn.execute(
+            "DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2",
+            user_id, blocked_id
+        )
+        
+        return BlockActionResponse(
+            success=True,
+            message=f"Successfully unblocked {blocked_user['username'] or 'user'}",
+            blocked_id=blocked_id,
+            action_type="unblock",
+            is_blocked=False
+        )
+
+@router.get("/blocked", response_model=BlockedUsersResponse, tags=["Blocking"])
+async def get_blocked_users(
+    page: int = 1,
+    per_page: int = 20,
+    action_type: Optional[str] = None,
+    user=Depends(get_current_user_async)
+):
+    """Get list of users blocked by current user"""
+    user_id = user["user_id"]
+    
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 20
+    
+    offset = (page - 1) * per_page
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Build base query
+        base_query = """
+            FROM user_blocks ub
+            JOIN users u ON ub.blocked_id = u.user_id
+            WHERE ub.blocker_id = $1
+        """
+        params = [user_id]
+        param_count = 1
+        
+        # Add action type filter if specified
+        if action_type:
+            param_count += 1
+            base_query += f" AND ub.action_type = ${param_count}"
+            params.append(action_type)
+        
+        # Get total count
+        count_query = f"SELECT COUNT(*) {base_query}"
+        total_count = await conn.fetchval(count_query, *params)
+        
+        # Get blocked users with pagination
+        blocked_query = f"""
+            SELECT 
+                u.user_id,
+                u.username,
+                u.sex,
+                u.bio,
+                u.profile_image_url,
+                ub.action_type,
+                ub.reason,
+                ub.created_at as blocked_at
+            {base_query}
+            ORDER BY ub.created_at DESC
+            LIMIT ${param_count + 1} OFFSET ${param_count + 2}
+        """
+        params.extend([per_page, offset])
+        
+        blocked_users = await conn.fetch(blocked_query, *params)
+        
+        # Format blocked users
+        blocked_list = []
+        for blocked in blocked_users:
+            blocked_list.append(BlockedUser(
+                user_id=blocked['user_id'],
+                username=blocked['username'],
+                sex=blocked['sex'],
+                bio=blocked['bio'],
+                profile_image_url=blocked['profile_image_url'],
+                action_type=blocked['action_type'],
+                reason=blocked['reason'],
+                blocked_at=blocked['blocked_at']
+            ))
+        
+        has_next = offset + per_page < total_count
+        has_previous = page > 1
+        
+        return BlockedUsersResponse(
+            blocked_users=blocked_list,
+            total_count=total_count,
+            page=page,
+            per_page=per_page,
+            has_next=has_next,
+            has_previous=has_previous
+        )
+
+@router.get("/block/check/{user_id}", response_model=BlockActionResponse, tags=["Blocking"])
+async def check_block_status(
+    user_id: int,
+    current_user=Depends(get_current_user_async)
+):
+    """Check if a user is blocked by current user"""
+    current_user_id = current_user["user_id"]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if blocked
+        existing = await conn.fetchrow(
+            "SELECT action_type FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2",
+            current_user_id, user_id
+        )
+        
+        # Get user info
+        user_info = await conn.fetchrow(
+            "SELECT username FROM users WHERE user_id = $1",
+            user_id
+        )
+        
+        if not user_info:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        is_blocked = existing is not None
+        action_type = existing['action_type'] if existing else "none"
+        
+        return BlockActionResponse(
+            success=True,
+            message=f"{user_info['username'] or 'User'} is {'blocked' if is_blocked else 'not blocked'}",
+            blocked_id=user_id,
+            action_type=action_type,
+            is_blocked=is_blocked
+        )
+
+# Listener Verification endpoints
+@router.post("/verification/upload-audio-file", response_model=ListenerVerificationResponse, tags=["Listener Verification"])
+async def upload_verification_audio_file(
+    audio_file: UploadFile = File(..., description="Audio file to upload"),
+    user=Depends(get_current_user_async)
+):
+    """Upload audio file for listener verification (direct file upload to S3)"""
+    user_id = user["user_id"]
+    
+    # Check if user has listener role
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if user has listener role
+        listener_role = await conn.fetchrow(
+            """
+            SELECT role FROM user_roles 
+            WHERE user_id = $1 AND role = 'listener' AND active = true
+            """,
+            user_id
+        )
+        
+        if not listener_role:
+            raise HTTPException(
+                status_code=403, 
+                detail="Only users with listener role can upload verification audio"
+            )
+        
+        # Check if there's already a pending verification
+        existing_pending = await conn.fetchrow(
+            """
+            SELECT sample_id, status FROM listener_verification 
+            WHERE listener_id = $1 AND status = 'pending'
+            ORDER BY uploaded_at DESC LIMIT 1
+            """,
+            user_id
+        )
+        
+        if existing_pending:
+            raise HTTPException(
+                status_code=400,
+                detail="You already have a pending verification. Please wait for it to be reviewed."
+            )
+        
+        # Validate file type
+        if not audio_file.content_type or not audio_file.content_type.startswith('audio/'):
+            raise HTTPException(
+                status_code=400,
+                detail="File must be an audio file (mp3, wav, m4a, etc.)"
+            )
+        
+        # Validate file size (max 10MB)
+        file_content = await audio_file.read()
+        if len(file_content) > 10 * 1024 * 1024:  # 10MB
+            raise HTTPException(
+                status_code=400,
+                detail="File size must be less than 10MB"
+            )
+        
+        # Check if S3 is configured
+        if not s3_client.is_configured():
+            raise HTTPException(
+                status_code=500,
+                detail="File upload service is not configured. Please contact support."
+            )
+        
+        # Upload to S3
+        s3_url = await s3_client.upload_audio_file(
+            file_content=file_content,
+            user_id=user_id,
+            content_type=audio_file.content_type
+        )
+        
+        if not s3_url:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to upload file. Please try again."
+            )
+        
+        # Insert new verification record
+        verification = await conn.fetchrow(
+            """
+            INSERT INTO listener_verification (listener_id, audio_file_url, status, uploaded_at)
+            VALUES ($1, $2, 'pending', now())
+            RETURNING *
+            """,
+            user_id, s3_url
+        )
+        
+        return ListenerVerificationResponse(
+            sample_id=verification['sample_id'],
+            listener_id=verification['listener_id'],
+            audio_file_url=verification['audio_file_url'],
+            status=ListenerVerificationStatus(verification['status']),
+            remarks=verification['remarks'],
+            uploaded_at=verification['uploaded_at'],
+            reviewed_at=verification['reviewed_at']
+        )
+
+@router.post("/verification/upload-audio-url", response_model=ListenerVerificationResponse, tags=["Listener Verification"])
+async def upload_verification_audio_url(
+    data: UploadAudioRequest,
+    user=Depends(get_current_user_async)
+):
+    """Upload audio sample for listener verification using S3 URL (for external uploads)"""
+    user_id = user["user_id"]
+    
+    # Check if user has listener role
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if user has listener role
+        listener_role = await conn.fetchrow(
+            """
+            SELECT role FROM user_roles 
+            WHERE user_id = $1 AND role = 'listener' AND active = true
+            """,
+            user_id
+        )
+        
+        if not listener_role:
+            raise HTTPException(
+                status_code=403, 
+                detail="Only users with listener role can upload verification audio"
+            )
+        
+        # Check if there's already a pending verification
+        existing_pending = await conn.fetchrow(
+            """
+            SELECT sample_id, status FROM listener_verification 
+            WHERE listener_id = $1 AND status = 'pending'
+            ORDER BY uploaded_at DESC LIMIT 1
+            """,
+            user_id
+        )
+        
+        if existing_pending:
+            raise HTTPException(
+                status_code=400,
+                detail="You already have a pending verification. Please wait for it to be reviewed."
+            )
+        
+        # Validate S3 URL format
+        if not data.audio_file_url.startswith('https://') or 's3' not in data.audio_file_url:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid S3 URL format"
+            )
+        
+        # Insert new verification record
+        verification = await conn.fetchrow(
+            """
+            INSERT INTO listener_verification (listener_id, audio_file_url, status, uploaded_at)
+            VALUES ($1, $2, 'pending', now())
+            RETURNING *
+            """,
+            user_id, data.audio_file_url
+        )
+        
+        return ListenerVerificationResponse(
+            sample_id=verification['sample_id'],
+            listener_id=verification['listener_id'],
+            audio_file_url=verification['audio_file_url'],
+            status=ListenerVerificationStatus(verification['status']),
+            remarks=verification['remarks'],
+            uploaded_at=verification['uploaded_at'],
+            reviewed_at=verification['reviewed_at']
+        )
+
+@router.get("/verification/status", response_model=VerificationStatusResponse, tags=["Listener Verification"])
+async def get_verification_status(user=Depends(get_current_user_async)):
+    """Get listener's verification status"""
+    user_id = user["user_id"]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if user has listener role
+        listener_role = await conn.fetchrow(
+            """
+            SELECT role FROM user_roles 
+            WHERE user_id = $1 AND role = 'listener' AND active = true
+            """,
+            user_id
+        )
+        
+        if not listener_role:
+            raise HTTPException(
+                status_code=403, 
+                detail="Only users with listener role can check verification status"
+            )
+        
+        # Get latest verification record
+        verification = await conn.fetchrow(
+            """
+            SELECT * FROM listener_verification 
+            WHERE listener_id = $1 
+            ORDER BY uploaded_at DESC LIMIT 1
+            """,
+            user_id
+        )
+        
+        if not verification:
+            return VerificationStatusResponse(
+                is_verified=False,
+                verification_status=None,
+                last_verification=None,
+                message="No verification audio uploaded yet"
+            )
+        
+        verification_response = ListenerVerificationResponse(
+            sample_id=verification['sample_id'],
+            listener_id=verification['listener_id'],
+            audio_file_url=verification['audio_file_url'],
+            status=ListenerVerificationStatus(verification['status']),
+            remarks=verification['remarks'],
+            uploaded_at=verification['uploaded_at'],
+            reviewed_at=verification['reviewed_at']
+        )
+        
+        is_verified = verification['status'] == 'approved'
+        message = f"Verification status: {verification['status']}"
+        
+        if verification['status'] == 'rejected' and verification['remarks']:
+            message += f" - {verification['remarks']}"
+        
+        return VerificationStatusResponse(
+            is_verified=is_verified,
+            verification_status=ListenerVerificationStatus(verification['status']),
+            last_verification=verification_response,
+            message=message
+        )
+
+@router.get("/verification/history", response_model=List[ListenerVerificationResponse], tags=["Listener Verification"])
+async def get_verification_history(user=Depends(get_current_user_async)):
+    """Get listener's verification history"""
+    user_id = user["user_id"]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if user has listener role
+        listener_role = await conn.fetchrow(
+            """
+            SELECT role FROM user_roles 
+            WHERE user_id = $1 AND role = 'listener' AND active = true
+            """,
+            user_id
+        )
+        
+        if not listener_role:
+            raise HTTPException(
+                status_code=403, 
+                detail="Only users with listener role can view verification history"
+            )
+        
+        # Get all verification records
+        verifications = await conn.fetch(
+            """
+            SELECT * FROM listener_verification 
+            WHERE listener_id = $1 
+            ORDER BY uploaded_at DESC
+            """,
+            user_id
+        )
+        
+        verification_list = []
+        for verification in verifications:
+            verification_list.append(ListenerVerificationResponse(
+                sample_id=verification['sample_id'],
+                listener_id=verification['listener_id'],
+                audio_file_url=verification['audio_file_url'],
+                status=ListenerVerificationStatus(verification['status']),
+                remarks=verification['remarks'],
+                uploaded_at=verification['uploaded_at'],
+                reviewed_at=verification['reviewed_at']
+            ))
+        
+        return verification_list
+
+# Admin endpoints for verification review
+@router.get("/admin/verification/pending", response_model=List[ListenerVerificationResponse], tags=["Admin - Verification"])
+async def get_pending_verifications(
+    page: int = 1,
+    per_page: int = 20,
+    user=Depends(get_current_user_async)
+):
+    """Get all pending verification requests (admin only)"""
+    # Note: In production, add admin role checking here
+    user_id = user["user_id"]
+    
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 20
+    
+    offset = (page - 1) * per_page
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get pending verifications with user info
+        verifications = await conn.fetch(
+            """
+            SELECT 
+                lv.*,
+                u.username,
+                u.phone
+            FROM listener_verification lv
+            JOIN users u ON lv.listener_id = u.user_id
+            WHERE lv.status = 'pending'
+            ORDER BY lv.uploaded_at ASC
+            LIMIT $1 OFFSET $2
+            """,
+            per_page, offset
+        )
+        
+        verification_list = []
+        for verification in verifications:
+            verification_list.append(ListenerVerificationResponse(
+                sample_id=verification['sample_id'],
+                listener_id=verification['listener_id'],
+                audio_file_url=verification['audio_file_url'],
+                status=ListenerVerificationStatus(verification['status']),
+                remarks=verification['remarks'],
+                uploaded_at=verification['uploaded_at'],
+                reviewed_at=verification['reviewed_at']
+            ))
+        
+        return verification_list
+
+@router.post("/admin/verification/review", response_model=AdminReviewResponse, tags=["Admin - Verification"])
+async def review_verification(
+    data: AdminReviewRequest,
+    user=Depends(get_current_user_async)
+):
+    """Review and approve/reject verification request (admin only)"""
+    # Note: In production, add admin role checking here
+    user_id = user["user_id"]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if verification exists and is pending
+        verification = await conn.fetchrow(
+            """
+            SELECT * FROM listener_verification 
+            WHERE sample_id = $1 AND status = 'pending'
+            """,
+            data.sample_id
+        )
+        
+        if not verification:
+            raise HTTPException(
+                status_code=404,
+                detail="Verification request not found or already reviewed"
+            )
+        
+        # Update verification status
+        updated_verification = await conn.fetchrow(
+            """
+            UPDATE listener_verification 
+            SET status = $1, remarks = $2, reviewed_at = now()
+            WHERE sample_id = $3
+            RETURNING *
+            """,
+            data.status.value, data.remarks, data.sample_id
+        )
+        
+        verification_response = ListenerVerificationResponse(
+            sample_id=updated_verification['sample_id'],
+            listener_id=updated_verification['listener_id'],
+            audio_file_url=updated_verification['audio_file_url'],
+            status=ListenerVerificationStatus(updated_verification['status']),
+            remarks=updated_verification['remarks'],
+            uploaded_at=updated_verification['uploaded_at'],
+            reviewed_at=updated_verification['reviewed_at']
+        )
+        
+        message = f"Verification {data.status.value} successfully"
+        if data.remarks:
+            message += f" with remarks: {data.remarks}"
+        
+        return AdminReviewResponse(
+            success=True,
+            message=message,
+            verification=verification_response
+        )

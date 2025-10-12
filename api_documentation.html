@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saathii Backend API Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3rem;
+        }
+
+        .nav-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f8f9ff, #e8f0ff);
+            border-radius: 10px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            font-size: 1.5rem;
+            margin: 25px 0 15px 0;
+            color: #555;
+        }
+
+        .endpoint {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .method {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-right: 15px;
+        }
+
+        .method.get { background: #e3f2fd; color: #1976d2; }
+        .method.post { background: #e8f5e8; color: #388e3c; }
+        .method.put { background: #fff3e0; color: #f57c00; }
+        .method.delete { background: #ffebee; color: #d32f2f; }
+        .method.websocket { background: #f3e5f5; color: #7b1fa2; }
+
+        .endpoint-path {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .endpoint-description {
+            color: #666;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        .endpoint-details {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .detail-section {
+            margin-bottom: 15px;
+        }
+
+        .detail-section h4 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .detail-section p, .detail-section ul {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .detail-section ul {
+            padding-left: 20px;
+        }
+
+        .detail-section li {
+            margin-bottom: 5px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .schema-section {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        .schema-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .field:last-child {
+            border-bottom: none;
+        }
+
+        .field-name {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .field-type {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .field-description {
+            color: #4a5568;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f8f9ff, #e8f0ff);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .feature-description {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .tech-item {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .response-example {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .status-code {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .status-200 { background: #e8f5e8; color: #388e3c; }
+        .status-201 { background: #e8f5e8; color: #388e3c; }
+        .status-400 { background: #ffebee; color: #d32f2f; }
+        .status-401 { background: #fff3e0; color: #f57c00; }
+        .status-404 { background: #ffebee; color: #d32f2f; }
+        .status-500 { background: #ffebee; color: #d32f2f; }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-links {
+                grid-template-columns: 1fr;
+            }
+            
+            .endpoint-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .method {
+                margin-bottom: 10px;
+            }
+        }
+
+        .toc {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .toc h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Saathii Backend API</h1>
+            <p>A scalable FastAPI backend for the Saathii application with authentication, user management, presence features, and real-time WebSocket updates</p>
+            <div class="version-badge">Version 1.0.0</div>
+        </div>
+
+        <div class="nav">
+            <h3>Quick Navigation</h3>
+            <div class="nav-links">
+                <a href="#overview" class="nav-link">Overview</a>
+                <a href="#authentication" class="nav-link">Authentication</a>
+                <a href="#user-management" class="nav-link">User Management</a>
+                <a href="#call-management" class="nav-link">Call Management</a>
+                <a href="#websocket" class="nav-link">WebSocket</a>
+                <a href="#schemas" class="nav-link">Data Schemas</a>
+                <a href="#tech-stack" class="nav-link">Tech Stack</a>
+            </div>
+        </div>
+
+        <div class="toc">
+            <h3>Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">Overview & Features</a></li>
+                <li><a href="#authentication">Authentication Endpoints</a></li>
+                <li><a href="#user-management">User Management Endpoints</a></li>
+                <li><a href="#call-management">Call Management Endpoints</a></li>
+                <li><a href="#websocket">WebSocket Endpoints</a></li>
+                <li><a href="#schemas">Data Schemas</a></li>
+                <li><a href="#tech-stack">Technology Stack</a></li>
+            </ul>
+        </div>
+
+        <div id="overview" class="section">
+            <h2>Overview & Features</h2>
+            <p>Saathii Backend is a comprehensive FastAPI-based backend service designed for a real-time communication platform. It provides user management, call management, presence tracking, and real-time WebSocket updates.</p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <div class="feature-title">Authentication</div>
+                    <div class="feature-description">OTP-based authentication with JWT tokens, refresh token rotation, and secure logout</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <div class="feature-title">User Management</div>
+                    <div class="feature-description">Complete user profiles, presence tracking, favorites, blocking, and verification system</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📞</div>
+                    <div class="feature-title">Call Management</div>
+                    <div class="feature-description">Coin-based call system with real-time billing, call history, and earnings tracking</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">Real-time Updates</div>
+                    <div class="feature-description">WebSocket connections for live presence updates and real-time communication</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <div class="feature-title">Wallet System</div>
+                    <div class="feature-description">Coin-based economy with recharge, withdrawal, and transaction tracking</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎵</div>
+                    <div class="feature-title">Listener Verification</div>
+                    <div class="feature-description">Audio verification system for listeners with admin review process</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="authentication" class="section">
+            <h2>Authentication Endpoints</h2>
+            <p>All authentication endpoints handle OTP-based verification and JWT token management.</p>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/auth/request_otp</span>
+                </div>
+                <div class="endpoint-description">Request OTP for phone number verification</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Request Body</h4>
+                        <div class="code-block">
+{
+  "phone": "+918709996580"
+}
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Response</h4>
+                        <div class="code-block">
+{
+  "message": "OTP sent"
+}
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Rate Limiting</h4>
+                        <p>5 requests per 15 minutes per phone number</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/auth/resend_otp</span>
+                </div>
+                <div class="endpoint-description">Resend OTP with throttling (60 seconds between requests)</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Request Body</h4>
+                        <div class="code-block">
+{
+  "phone": "+918709996580"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/auth/verify</span>
+                </div>
+                <div class="endpoint-description">Verify OTP and get authentication tokens</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Request Body</h4>
+                        <div class="code-block">
+{
+  "phone": "+918709996580",
+  "otp": "123456"
+}
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Response (Registered User)</h4>
+                        <div class="code-block">
+{
+  "status": "registered",
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Response (New User)</h4>
+                        <div class="code-block">
+{
+  "status": "needs_registration",
+  "registration_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/auth/register</span>
+                </div>
+                <div class="endpoint-description">Register new user with profile information</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Request Body</h4>
+                        <div class="code-block">
+{
+  "registration_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "username": "john_doe",
+  "sex": "male",
+  "dob": "1990-01-01",
+  "bio": "I love to help people",
+  "interests": ["music", "sports"],
+  "profile_image_url": "https://example.com/image.jpg",
+  "preferred_language": "en",
+  "role": "listener"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/auth/refresh</span>
+                </div>
+                <div class="endpoint-description">Refresh access token using refresh token</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/auth/logout</span>
+                </div>
+                <div class="endpoint-description">Logout user and revoke all tokens</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Headers</h4>
+                        <p>Authorization: Bearer &lt;access_token&gt;</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="user-management" class="section">
+            <h2>User Management Endpoints</h2>
+            <p>Comprehensive user management including profiles, presence, favorites, blocking, and verification.</p>
+
+            <h3>Profile Management</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/users/me</span>
+                </div>
+                <div class="endpoint-description">Get current user's profile information</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/users/me</span>
+                </div>
+                <div class="endpoint-description">Update current user's profile</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method delete">DELETE</span>
+                    <span class="endpoint-path">/users/me</span>
+                </div>
+                <div class="endpoint-description">Delete current user account</div>
+            </div>
+
+            <h3>Presence & Status</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/users/me/status</span>
+                </div>
+                <div class="endpoint-description">Get current user's online status and busy state</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/users/me/status</span>
+                </div>
+                <div class="endpoint-description">Update user's online/busy status</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/users/me/heartbeat</span>
+                </div>
+                <div class="endpoint-description">Send heartbeat to keep user online</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/users/{user_id}/presence</span>
+                </div>
+                <div class="endpoint-description">Get another user's presence status</div>
+            </div>
+
+            <h3>Feed & Discovery</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/feed/listeners</span>
+                </div>
+                <div class="endpoint-description">Get listeners feed with filtering options</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Query Parameters</h4>
+                        <ul>
+                            <li><code>online_only</code> - Show only online users</li>
+                            <li><code>available_only</code> - Show only available users (online and not busy)</li>
+                            <li><code>language</code> - Filter by preferred language</li>
+                            <li><code>interests</code> - Filter by interests (comma-separated)</li>
+                            <li><code>min_rating</code> - Minimum rating filter</li>
+                            <li><code>page</code> - Page number for pagination</li>
+                            <li><code>per_page</code> - Items per page (max 100)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/feed/stats</span>
+                </div>
+                <div class="endpoint-description">Get listener statistics for the feed</div>
+            </div>
+
+            <h3>Favorites Management</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/favorites/add</span>
+                </div>
+                <div class="endpoint-description">Add a listener to favorites</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method delete">DELETE</span>
+                    <span class="endpoint-path">/favorites/remove</span>
+                </div>
+                <div class="endpoint-description">Remove a listener from favorites</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/favorites</span>
+                </div>
+                <div class="endpoint-description">Get user's favorite listeners with pagination</div>
+            </div>
+
+            <h3>Blocking System</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/block</span>
+                </div>
+                <div class="endpoint-description">Block a user</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method delete">DELETE</span>
+                    <span class="endpoint-path">/block</span>
+                </div>
+                <div class="endpoint-description">Unblock a user</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/blocked</span>
+                </div>
+                <div class="endpoint-description">Get list of blocked users</div>
+            </div>
+
+            <h3>Wallet & Earnings</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/wallet/balance</span>
+                </div>
+                <div class="endpoint-description">Get wallet balance and earnings summary</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/wallet/earnings</span>
+                </div>
+                <div class="endpoint-description">Get call earnings history</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/wallet/withdraw</span>
+                </div>
+                <div class="endpoint-description">Request withdrawal from wallet</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/wallet/bank-details</span>
+                </div>
+                <div class="endpoint-description">Update bank details for withdrawals</div>
+            </div>
+
+            <h3>Listener Verification</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/verification/upload-audio-file</span>
+                </div>
+                <div class="endpoint-description">Upload audio file for listener verification (direct file upload)</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Request</h4>
+                        <p>Multipart form data with audio file (max 10MB)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/verification/upload-audio-url</span>
+                </div>
+                <div class="endpoint-description">Upload audio sample using S3 URL</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/verification/status</span>
+                </div>
+                <div class="endpoint-description">Get listener's verification status</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/verification/history</span>
+                </div>
+                <div class="endpoint-description">Get verification history</div>
+            </div>
+        </div>
+
+        <div id="call-management" class="section">
+            <h2>Call Management Endpoints</h2>
+            <p>Complete call management system with coin-based billing, real-time tracking, and earnings management.</p>
+
+            <h3>Call Operations</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/calls/start</span>
+                </div>
+                <div class="endpoint-description">Start a new call with a listener</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Request Body</h4>
+                        <div class="code-block">
+{
+  "listener_id": 123,
+  "call_type": "audio",
+  "estimated_duration_minutes": 30
+}
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Response</h4>
+                        <div class="code-block">
+{
+  "call_id": 456,
+  "message": "Call started successfully. Maximum duration: 60 minutes",
+  "estimated_cost": 300,
+  "remaining_coins": 700,
+  "call_type": "audio",
+  "listener_id": 123,
+  "status": "ongoing"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/calls/end</span>
+                </div>
+                <div class="endpoint-description">End an ongoing call</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Request Body</h4>
+                        <div class="code-block">
+{
+  "call_id": 456,
+  "reason": "completed"
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/calls/ongoing</span>
+                </div>
+                <div class="endpoint-description">Get current ongoing call for the user</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/calls/emergency-end/{call_id}</span>
+                </div>
+                <div class="endpoint-description">Emergency end call (for technical issues)</div>
+            </div>
+
+            <h3>Call History & Analytics</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/calls/history</span>
+                </div>
+                <div class="endpoint-description">Get user's call history with pagination and filtering</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Query Parameters</h4>
+                        <ul>
+                            <li><code>page</code> - Page number (default: 1)</li>
+                            <li><code>per_page</code> - Items per page (default: 20, max: 100)</li>
+                            <li><code>call_type</code> - Filter by call type (audio/video)</li>
+                            <li><code>status</code> - Filter by status (ongoing/completed/dropped)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/calls/history/summary</span>
+                </div>
+                <div class="endpoint-description">Get call history summary with statistics</div>
+            </div>
+
+            <h3>Coin Management</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/calls/balance</span>
+                </div>
+                <div class="endpoint-description">Get user's coin balance and spending history</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/calls/recharge</span>
+                </div>
+                <div class="endpoint-description">Recharge coins with real money</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Request Body</h4>
+                        <div class="code-block">
+{
+  "amount_rupees": 150,
+  "payment_method": "upi"
+}
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Available Recharge Amounts</h4>
+                        <ul>
+                            <li>₹150 = 300 coins</li>
+                            <li>₹300 = 600 coins</li>
+                            <li>₹500 = 1000 coins</li>
+                            <li>₹1000 = 2000 coins</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/calls/recharge/history</span>
+                </div>
+                <div class="endpoint-description">Get recharge history</div>
+            </div>
+
+            <h3>Call Billing & Rates</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/calls/bill-minute/{call_id}</span>
+                </div>
+                <div class="endpoint-description">Bill for one minute of call (called every minute during call)</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/calls/rates</span>
+                </div>
+                <div class="endpoint-description">Get current call rates and recharge options</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Response</h4>
+                        <div class="code-block">
+{
+  "call_rates": {
+    "audio": {
+      "rate_per_minute": 10,
+      "minimum_charge": 10
+    },
+    "video": {
+      "rate_per_minute": 50,
+      "minimum_charge": 50
+    }
+  },
+  "recharge_options": {
+    "150": 300,
+    "300": 600,
+    "500": 1000,
+    "1000": 2000
+  },
+  "listener_earnings": {
+    "audio": 15,
+    "video": 75
+  }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Transaction Management</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/transactions/user</span>
+                </div>
+                <div class="endpoint-description">Get user's transaction history (coins spent and money spent)</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/transactions/listener</span>
+                </div>
+                <div class="endpoint-description">Get listener's transaction history (money earned from calls)</div>
+            </div>
+
+            <h3>System Management</h3>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/calls/cleanup</span>
+                </div>
+                <div class="endpoint-description">Manually trigger cleanup of expired calls</div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/calls/status</span>
+                </div>
+                <div class="endpoint-description">Get call system status and ongoing calls count</div>
+            </div>
+        </div>
+
+        <div id="websocket" class="section">
+            <h2>WebSocket Endpoints</h2>
+            <p>Real-time WebSocket connections for live updates and presence tracking.</p>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method websocket">WS</span>
+                    <span class="endpoint-path">/ws/feed</span>
+                </div>
+                <div class="endpoint-description">WebSocket endpoint for real-time feed updates</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Query Parameters</h4>
+                        <p><code>token</code> - JWT access token for authentication</p>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Connection URL</h4>
+                        <div class="code-block">
+ws://localhost:8000/ws/feed?token=YOUR_ACCESS_TOKEN
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Message Types</h4>
+                        <ul>
+                            <li><code>ping</code> - Send ping to keep connection alive</li>
+                            <li><code>subscribe</code> - Subscribe to specific updates</li>
+                        </ul>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Response Types</h4>
+                        <ul>
+                            <li><code>connection_established</code> - Initial connection confirmation</li>
+                            <li><code>pong</code> - Response to ping</li>
+                            <li><code>subscription_confirmed</code> - Subscription confirmation</li>
+                            <li><code>user_status_update</code> - Real-time user status updates</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method websocket">WS</span>
+                    <span class="endpoint-path">/ws/presence</span>
+                </div>
+                <div class="endpoint-description">WebSocket endpoint for real-time presence updates</div>
+                <div class="endpoint-details">
+                    <div class="detail-section">
+                        <h4>Query Parameters</h4>
+                        <p><code>token</code> - JWT access token for authentication</p>
+                    </div>
+                    <div class="detail-section">
+                        <h4>Connection URL</h4>
+                        <div class="code-block">
+ws://localhost:8000/ws/presence?token=YOUR_ACCESS_TOKEN
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="schemas" class="section">
+            <h2>Data Schemas</h2>
+            <p>Complete data models and schemas used throughout the API.</p>
+
+            <h3>Authentication Schemas</h3>
+            <div class="schema-section">
+                <div class="schema-title">OTPRequest</div>
+                <div class="field">
+                    <span class="field-name">phone</span>
+                    <span class="field-type">string</span>
+                </div>
+                <div class="field-description">Phone number in international format (e.g., +918709996580)</div>
+            </div>
+
+            <div class="schema-section">
+                <div class="schema-title">VerifyRequest</div>
+                <div class="field">
+                    <span class="field-name">phone</span>
+                    <span class="field-type">string</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">otp</span>
+                    <span class="field-type">string</span>
+                </div>
+            </div>
+
+            <div class="schema-section">
+                <div class="schema-title">RegisterRequest</div>
+                <div class="field">
+                    <span class="field-name">registration_token</span>
+                    <span class="field-type">string</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">username</span>
+                    <span class="field-type">string</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">sex</span>
+                    <span class="field-type">SexEnum (male/female)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">dob</span>
+                    <span class="field-type">date (YYYY-MM-DD)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">bio</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">interests</span>
+                    <span class="field-type">array of strings (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">profile_image_url</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">preferred_language</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">role</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+            </div>
+
+            <h3>User Management Schemas</h3>
+            <div class="schema-section">
+                <div class="schema-title">UserResponse</div>
+                <div class="field">
+                    <span class="field-name">user_id</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">phone</span>
+                    <span class="field-type">string</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">username</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">sex</span>
+                    <span class="field-type">SexEnum (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">dob</span>
+                    <span class="field-type">date (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">bio</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">interests</span>
+                    <span class="field-type">array of strings (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">profile_image_url</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">preferred_language</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">rating</span>
+                    <span class="field-type">integer (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">country</span>
+                    <span class="field-type">string (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">roles</span>
+                    <span class="field-type">array of strings (optional)</span>
+                </div>
+            </div>
+
+            <div class="schema-section">
+                <div class="schema-title">UserStatusResponse</div>
+                <div class="field">
+                    <span class="field-name">user_id</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">is_online</span>
+                    <span class="field-type">boolean</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">last_seen</span>
+                    <span class="field-type">datetime</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">is_busy</span>
+                    <span class="field-type">boolean</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">busy_until</span>
+                    <span class="field-type">datetime (optional)</span>
+                </div>
+            </div>
+
+            <h3>Call Management Schemas</h3>
+            <div class="schema-section">
+                <div class="schema-title">StartCallRequest</div>
+                <div class="field">
+                    <span class="field-name">listener_id</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">call_type</span>
+                    <span class="field-type">CallType (audio/video)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">estimated_duration_minutes</span>
+                    <span class="field-type">integer (optional)</span>
+                </div>
+            </div>
+
+            <div class="schema-section">
+                <div class="schema-title">CallInfo</div>
+                <div class="field">
+                    <span class="field-name">call_id</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">user_id</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">listener_id</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">call_type</span>
+                    <span class="field-type">CallType</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">start_time</span>
+                    <span class="field-type">datetime</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">end_time</span>
+                    <span class="field-type">datetime (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">duration_seconds</span>
+                    <span class="field-type">integer (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">duration_minutes</span>
+                    <span class="field-type">integer (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">user_money_spend</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">coins_spent</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">listener_money_earned</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">status</span>
+                    <span class="field-type">CallStatus (ongoing/completed/dropped)</span>
+                </div>
+            </div>
+
+            <h3>Wallet & Transaction Schemas</h3>
+            <div class="schema-section">
+                <div class="schema-title">WalletBalanceResponse</div>
+                <div class="field">
+                    <span class="field-name">user_id</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">balance_coins</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">withdrawable_money</span>
+                    <span class="field-type">float</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">total_earned</span>
+                    <span class="field-type">float</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">total_withdrawn</span>
+                    <span class="field-type">float</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">pending_withdrawals</span>
+                    <span class="field-type">float</span>
+                </div>
+            </div>
+
+            <div class="schema-section">
+                <div class="schema-title">TransactionInfo</div>
+                <div class="field">
+                    <span class="field-name">transaction_id</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">tx_type</span>
+                    <span class="field-type">TransactionType</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">coins_change</span>
+                    <span class="field-type">integer</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">money_change</span>
+                    <span class="field-type">float</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">description</span>
+                    <span class="field-type">string</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">call_id</span>
+                    <span class="field-type">integer (optional)</span>
+                </div>
+                <div class="field">
+                    <span class="field-name">created_at</span>
+                    <span class="field-type">datetime</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="tech-stack" class="section">
+            <h2>Technology Stack</h2>
+            <p>The Saathii Backend is built using modern, scalable technologies:</p>
+            
+            <div class="tech-stack">
+                <div class="tech-item">FastAPI 0.118.0</div>
+                <div class="tech-item">Python 3.11+</div>
+                <div class="tech-item">PostgreSQL</div>
+                <div class="tech-item">Redis</div>
+                <div class="tech-item">WebSocket</div>
+                <div class="tech-item">JWT Authentication</div>
+                <div class="tech-item">AWS S3</div>
+                <div class="tech-item">Docker</div>
+                <div class="tech-item">Pydantic</div>
+                <div class="tech-item">AsyncPG</div>
+                <div class="tech-item">Boto3</div>
+                <div class="tech-item">Uvicorn</div>
+            </div>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li><strong>Async/Await Support:</strong> Built with FastAPI for high-performance async operations</li>
+                <li><strong>Database:</strong> PostgreSQL with AsyncPG for efficient database operations</li>
+                <li><strong>Caching:</strong> Redis for session management, rate limiting, and real-time data</li>
+                <li><strong>Authentication:</strong> JWT-based authentication with refresh token rotation</li>
+                <li><strong>Real-time:</strong> WebSocket support for live updates and presence tracking</li>
+                <li><strong>File Storage:</strong> AWS S3 integration for audio file uploads</li>
+                <li><strong>Validation:</strong> Pydantic models for request/response validation</li>
+                <li><strong>Documentation:</strong> Auto-generated OpenAPI documentation</li>
+                <li><strong>Containerization:</strong> Docker support for easy deployment</li>
+            </ul>
+
+            <h3>API Response Codes</h3>
+            <div class="endpoint-details">
+                <div class="detail-section">
+                    <h4>Success Responses</h4>
+                    <p><span class="status-code status-200">200</span> OK - Request successful</p>
+                    <p><span class="status-code status-201">201</span> Created - Resource created successfully</p>
+                </div>
+                <div class="detail-section">
+                    <h4>Client Error Responses</h4>
+                    <p><span class="status-code status-400">400</span> Bad Request - Invalid request data</p>
+                    <p><span class="status-code status-401">401</span> Unauthorized - Authentication required</p>
+                    <p><span class="status-code status-404">404</span> Not Found - Resource not found</p>
+                </div>
+                <div class="detail-section">
+                    <h4>Server Error Responses</h4>
+                    <p><span class="status-code status-500">500</span> Internal Server Error - Server error occurred</p>
+                </div>
+            </div>
+
+            <h3>Rate Limiting</h3>
+            <ul>
+                <li><strong>OTP Requests:</strong> 5 requests per 15 minutes per phone number</li>
+                <li><strong>OTP Resend:</strong> 1 request per 60 seconds per phone number</li>
+                <li><strong>General API:</strong> No specific rate limiting (can be added as needed)</li>
+            </ul>
+
+            <h3>Security Features</h3>
+            <ul>
+                <li>JWT token-based authentication</li>
+                <li>Refresh token rotation for enhanced security</li>
+                <li>Token blacklisting on logout</li>
+                <li>Rate limiting on sensitive endpoints</li>
+                <li>Input validation using Pydantic models</li>
+                <li>SQL injection prevention with parameterized queries</li>
+                <li>File upload validation and size limits</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add active state to navigation links
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (scrollY >= (sectionTop - 200)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

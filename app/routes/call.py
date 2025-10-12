@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
-from typing import List
+from typing import List, Optional
 import time
 import asyncio
 from datetime import datetime, timedelta
@@ -21,7 +21,11 @@ from app.schemas.call import (
     RECHARGE_RATES,
     RechargeRequest,
     RechargeResponse,
-    RechargeHistoryResponse
+    RechargeHistoryResponse,
+    TransactionType,
+    TransactionInfo,
+    UserTransactionHistoryResponse,
+    ListenerTransactionHistoryResponse
 )
 
 router = APIRouter(tags=["Call Management"])
@@ -933,3 +937,243 @@ async def get_call_rates():
             "video": int(DEFAULT_CALL_RATES[CallType.VIDEO].rate_per_minute * 1.5)
         }
     }
+
+@router.get("/transactions/user", response_model=UserTransactionHistoryResponse, tags=["Transaction Management"])
+async def get_user_transaction_history(
+    page: int = 1,
+    per_page: int = 20,
+    tx_type: Optional[TransactionType] = None,
+    current_user: dict = Depends(get_current_user_async)
+):
+    """Get user's transaction history showing coins spent and money spent on calls"""
+    user_id = current_user["user_id"]
+    
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 20
+    
+    offset = (page - 1) * per_page
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get user's wallet_id
+        wallet_id = await conn.fetchval(
+            "SELECT wallet_id FROM user_wallets WHERE user_id = $1",
+            user_id
+        )
+        
+        if not wallet_id:
+            raise HTTPException(status_code=404, detail="User wallet not found")
+        
+        # Build query with optional filter
+        base_query = """
+            FROM user_transactions ut
+            WHERE ut.wallet_id = $1
+        """
+        params = [wallet_id]
+        param_count = 1
+        
+        if tx_type:
+            param_count += 1
+            base_query += f" AND ut.tx_type = ${param_count}"
+            params.append(tx_type.value)
+        
+        # Get total count
+        count_query = f"SELECT COUNT(*) {base_query}"
+        total_count = await conn.fetchval(count_query, *params)
+        
+        # Get transactions with pagination
+        transactions_query = f"""
+            SELECT 
+                ut.transaction_id,
+                ut.tx_type,
+                ut.coins_change,
+                ut.money_change,
+                ut.created_at,
+                uc.call_id
+            {base_query}
+            ORDER BY ut.created_at DESC
+            LIMIT ${param_count + 1} OFFSET ${param_count + 2}
+        """
+        params.extend([per_page, offset])
+        
+        transactions = await conn.fetch(transactions_query, *params)
+        
+        # Get summary statistics
+        stats_query = f"""
+            SELECT 
+                COALESCE(SUM(CASE WHEN ut.tx_type = 'spend' THEN ut.coins_change ELSE 0 END), 0) as total_coins_spent,
+                COALESCE(SUM(CASE WHEN ut.tx_type = 'spend' THEN ut.money_change ELSE 0 END), 0) as total_money_spent,
+                COALESCE(SUM(CASE WHEN ut.tx_type IN ('earn', 'bonus', 'referral_bonus') THEN ut.coins_change ELSE 0 END), 0) as total_coins_earned,
+                COALESCE(SUM(CASE WHEN ut.tx_type IN ('earn', 'bonus', 'referral_bonus') THEN ut.money_change ELSE 0 END), 0) as total_money_earned
+            FROM user_transactions ut
+            WHERE ut.wallet_id = $1
+        """
+        stats = await conn.fetchrow(stats_query, wallet_id)
+        
+        # Get current balance
+        current_balance = await conn.fetchval(
+            "SELECT balance_coins FROM user_wallets WHERE wallet_id = $1",
+            wallet_id
+        )
+        
+        # Format transactions
+        transaction_list = []
+        for tx in transactions:
+            description = _get_transaction_description(tx['tx_type'], tx['coins_change'], tx['money_change'], tx['call_id'])
+            transaction_list.append(TransactionInfo(
+                transaction_id=tx['transaction_id'],
+                tx_type=TransactionType(tx['tx_type']),
+                coins_change=tx['coins_change'],
+                money_change=float(tx['money_change'] or 0),
+                description=description,
+                call_id=tx['call_id'],
+                created_at=tx['created_at']
+            ))
+        
+        has_next = offset + per_page < total_count
+        has_previous = page > 1
+        
+        return UserTransactionHistoryResponse(
+            transactions=transaction_list,
+            total_coins_spent=int(stats['total_coins_spent'] or 0),
+            total_money_spent=float(stats['total_money_spent'] or 0),
+            total_coins_earned=int(stats['total_coins_earned'] or 0),
+            total_money_earned=float(stats['total_money_earned'] or 0),
+            current_balance=current_balance or 0,
+            page=page,
+            per_page=per_page,
+            has_next=has_next,
+            has_previous=has_previous
+        )
+
+@router.get("/transactions/listener", response_model=ListenerTransactionHistoryResponse, tags=["Transaction Management"])
+async def get_listener_transaction_history(
+    page: int = 1,
+    per_page: int = 20,
+    current_user: dict = Depends(get_current_user_async)
+):
+    """Get listener's transaction history showing money earned from calls"""
+    user_id = current_user["user_id"]
+    
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 20
+    
+    offset = (page - 1) * per_page
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get user's wallet_id
+        wallet_id = await conn.fetchval(
+            "SELECT wallet_id FROM user_wallets WHERE user_id = $1",
+            user_id
+        )
+        
+        if not wallet_id:
+            raise HTTPException(status_code=404, detail="User wallet not found")
+        
+        # Get earning transactions (earn, bonus, referral_bonus)
+        transactions_query = """
+            SELECT 
+                ut.transaction_id,
+                ut.tx_type,
+                ut.coins_change,
+                ut.money_change,
+                ut.created_at,
+                uc.call_id
+            FROM user_transactions ut
+            LEFT JOIN user_calls uc ON ut.money_change = uc.listener_money_earned 
+                AND ut.tx_type = 'earn' 
+                AND ut.created_at BETWEEN uc.start_time AND COALESCE(uc.end_time, now())
+            WHERE ut.wallet_id = $1 
+                AND ut.tx_type IN ('earn', 'bonus', 'referral_bonus')
+            ORDER BY ut.created_at DESC
+            LIMIT $2 OFFSET $3
+        """
+        
+        transactions = await conn.fetch(transactions_query, wallet_id, per_page, offset)
+        
+        # Get total count for earning transactions
+        count_query = """
+            SELECT COUNT(*) 
+            FROM user_transactions ut
+            WHERE ut.wallet_id = $1 
+                AND ut.tx_type IN ('earn', 'bonus', 'referral_bonus')
+        """
+        total_count = await conn.fetchval(count_query, wallet_id)
+        
+        # Get summary statistics
+        stats_query = """
+            SELECT 
+                COALESCE(SUM(ut.coins_change), 0) as total_coins_earned,
+                COALESCE(SUM(ut.money_change), 0) as total_money_earned
+            FROM user_transactions ut
+            WHERE ut.wallet_id = $1 
+                AND ut.tx_type IN ('earn', 'bonus', 'referral_bonus')
+        """
+        stats = await conn.fetchrow(stats_query, wallet_id)
+        
+        # Get total calls completed as listener
+        calls_completed = await conn.fetchval(
+            "SELECT COUNT(*) FROM user_calls WHERE listener_id = $1 AND status = 'completed'",
+            user_id
+        )
+        
+        # Get current withdrawable balance
+        current_balance = await conn.fetchval(
+            "SELECT withdrawable_money FROM user_wallets WHERE wallet_id = $1",
+            wallet_id
+        )
+        
+        # Format transactions
+        transaction_list = []
+        for tx in transactions:
+            description = _get_transaction_description(tx['tx_type'], tx['coins_change'], tx['money_change'], tx['call_id'])
+            transaction_list.append(TransactionInfo(
+                transaction_id=tx['transaction_id'],
+                tx_type=TransactionType(tx['tx_type']),
+                coins_change=tx['coins_change'],
+                money_change=float(tx['money_change'] or 0),
+                description=description,
+                call_id=tx['call_id'],
+                created_at=tx['created_at']
+            ))
+        
+        has_next = offset + per_page < total_count
+        has_previous = page > 1
+        
+        return ListenerTransactionHistoryResponse(
+            transactions=transaction_list,
+            total_coins_earned=int(stats['total_coins_earned'] or 0),
+            total_money_earned=float(stats['total_money_earned'] or 0),
+            total_calls_completed=calls_completed or 0,
+            current_withdrawable_balance=float(current_balance or 0),
+            page=page,
+            per_page=per_page,
+            has_next=has_next,
+            has_previous=has_previous
+        )
+
+def _get_transaction_description(tx_type: str, coins_change: int, money_change: float, call_id: int = None) -> str:
+    """Generate human-readable description for transaction"""
+    if tx_type == "spend":
+        if call_id:
+            return f"Spent {abs(coins_change)} coins on call #{call_id}"
+        return f"Spent {abs(coins_change)} coins"
+    elif tx_type == "earn":
+        if call_id:
+            return f"Earned ₹{money_change:.2f} from call #{call_id}"
+        return f"Earned ₹{money_change:.2f}"
+    elif tx_type == "purchase":
+        return f"Purchased {coins_change} coins"
+    elif tx_type == "bonus":
+        return f"Received {coins_change} bonus coins"
+    elif tx_type == "referral_bonus":
+        return f"Received {coins_change} coins for referral"
+    elif tx_type == "withdraw":
+        return f"Withdrew ₹{abs(money_change):.2f}"
+    else:
+        return f"Transaction: {tx_type}"
