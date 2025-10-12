@@ -26,42 +26,40 @@ import ApiService from './ApiService';
 export interface Listener {
   user_id: number;
   username: string;
-  sex: 'male' | 'female' | 'other';
+  sex: 'male' | 'female';
   bio: string;
   interests: string[];
   profile_image_url?: string;
   preferred_language?: string;
   rating: number;
+  country: string;
+  roles: string[];
   is_online: boolean;
   is_busy: boolean;
   last_seen: string;
-  call_count: number;
-  avg_call_duration: number;
+  wait_time?: number;
+  is_available: boolean;
 }
 
 export interface FeedResponse {
   listeners: Listener[];
-  filters: FeedFilters;
-  pagination: FeedPagination;
+  total_count: number;
+  online_count: number;
+  available_count: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+  has_previous: boolean;
 }
 
 export interface FeedFilters {
-  online_only: boolean;
-  sex?: 'male' | 'female' | 'other';
-  min_rating: number;
-  max_rating: number;
-  interests: string[];
+  online_only?: boolean;
+  available_only?: boolean;
   language?: string;
-  sort_by: 'rating' | 'online' | 'recent';
-  sort_order: 'asc' | 'desc';
-}
-
-export interface FeedPagination {
-  page: number;
-  per_page: number;
-  total: number;
-  has_next: boolean;
-  has_previous: boolean;
+  interests?: string;
+  min_rating?: number;
+  page?: number;
+  per_page?: number;
 }
 
 export interface FeedStats {
@@ -93,20 +91,16 @@ export interface LanguageDistribution {
 
 class FeedService {
   // Get listeners feed
-  async getListenersFeed(filters: Partial<FeedFilters> = {}, page: number = 1, perPage: number = 20): Promise<FeedResponse> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      per_page: perPage.toString(),
-      online_only: filters.online_only?.toString() || 'false',
-      sort_by: filters.sort_by || 'rating',
-      sort_order: filters.sort_order || 'desc',
-    });
-
-    if (filters.sex) params.append('sex', filters.sex);
-    if (filters.min_rating) params.append('min_rating', filters.min_rating.toString());
-    if (filters.max_rating) params.append('max_rating', filters.max_rating.toString());
-    if (filters.interests?.length) params.append('interests', filters.interests.join(','));
+  async getListenersFeed(filters: Partial<FeedFilters> = {}): Promise<FeedResponse> {
+    const params = new URLSearchParams();
+    
+    if (filters.online_only !== undefined) params.append('online_only', filters.online_only.toString());
+    if (filters.available_only !== undefined) params.append('available_only', filters.available_only.toString());
     if (filters.language) params.append('language', filters.language);
+    if (filters.interests) params.append('interests', filters.interests);
+    if (filters.min_rating !== undefined) params.append('min_rating', filters.min_rating.toString());
+    if (filters.page !== undefined) params.append('page', filters.page.toString());
+    if (filters.per_page !== undefined) params.append('per_page', filters.per_page.toString());
 
     return ApiService.get<FeedResponse>(`/feed/listeners?${params}`);
   }

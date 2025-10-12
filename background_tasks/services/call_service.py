@@ -31,39 +31,21 @@ async def cleanup_expired_calls():
             try:
                 logger.info(f"🧹 Cleaning up expired call {call['call_id']}")
                 
-                # Calculate duration and proper settlement
+                # Calculate duration
                 start_time = call['start_time']
                 end_time = datetime.utcnow()
                 duration_seconds = int((end_time - start_time).total_seconds())
                 duration_minutes = max(1, duration_seconds // 60)
                 
-                # Calculate proper costs based on actual duration
+                # With per-minute deduction, coins are already deducted every minute
+                # So we just use the current coins_spent value
                 call_type = CallType(call['call_type'])
-                total_cost = calculate_call_cost(call_type, duration_minutes)
+                final_coins_spent = call['coins_spent']
                 
-                # Calculate listener earnings based on actual duration and badge
+                # Calculate listener earnings based on actual coins spent
                 listener_rupees_per_minute = await get_listener_earning_rate(call['listener_id'], call_type.value)
-                listener_earnings = int(listener_rupees_per_minute * duration_minutes)
-                
-                # Check if user has already paid enough
-                coins_already_spent = call['coins_spent']
-                additional_cost = total_cost - coins_already_spent
-                
-                # If user needs to pay more, deduct additional coins
-                if additional_cost > 0:
-                    current_balance = await get_user_coin_balance(call['user_id'])
-                    if current_balance >= additional_cost:
-                        await update_user_coin_balance(call['user_id'], additional_cost, "subtract", "spend")
-                        final_coins_spent = total_cost
-                    else:
-                        # User doesn't have enough coins, use what they already paid
-                        final_coins_spent = coins_already_spent
-                        # Recalculate listener earnings based on what user actually paid
-                        actual_duration_paid = coins_already_spent // DEFAULT_CALL_RATES[call_type].rate_per_minute
-                        listener_earnings = listener_rupees_per_minute * actual_duration_paid
-                else:
-                    # User has already paid enough or more than needed
-                    final_coins_spent = coins_already_spent
+                actual_duration_paid = final_coins_spent // DEFAULT_CALL_RATES[call_type]["rate_per_minute"]
+                listener_earnings = int(listener_rupees_per_minute * actual_duration_paid)
                 
                 # Use transaction to ensure atomicity
                 async with conn.transaction():
@@ -72,11 +54,10 @@ async def cleanup_expired_calls():
                         """
                         UPDATE user_calls 
                         SET end_time = $1, duration_seconds = $2, duration_minutes = $3,
-                            coins_spent = $4, listener_money_earned = $5,
-                            status = 'dropped', updated_at = now()
-                        WHERE call_id = $6 AND status = 'ongoing'
+                            listener_money_earned = $4, status = 'dropped', updated_at = now()
+                        WHERE call_id = $5 AND status = 'ongoing'
                         """,
-                        end_time, duration_seconds, duration_minutes, final_coins_spent, 
+                        end_time, duration_seconds, duration_minutes, 
                         listener_earnings, call['call_id']
                     )
                     
@@ -97,11 +78,6 @@ async def cleanup_expired_calls():
                 # Continue with other calls even if one fails
                 continue
 
-def calculate_call_cost(call_type: CallType, duration_minutes: int) -> int:
-    """Calculate call cost based on type and duration"""
-    rate_config = DEFAULT_CALL_RATES[call_type]
-    cost = max(rate_config.minimum_charge, duration_minutes * rate_config.rate_per_minute)
-    return cost
 
 async def get_user_coin_balance(user_id: int) -> int:
     """Get user's current coin balance"""

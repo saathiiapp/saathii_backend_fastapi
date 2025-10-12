@@ -63,101 +63,14 @@ class CallHistoryResponse(BaseModel):
     has_next: bool
     has_previous: bool
 
-class CoinBalanceResponse(BaseModel):
-    user_id: int
-    current_balance: int
-    total_earned: int
-    total_spent: int
-
-class CallRateConfig(BaseModel):
-    call_type: CallType
-    rate_per_minute: int = Field(..., description="Rate in coins per minute")
-    minimum_charge: int = Field(..., description="Minimum charge in coins")
-
 # Default call rates (can be configured)
 DEFAULT_CALL_RATES = {
-    CallType.AUDIO: CallRateConfig(
-        call_type=CallType.AUDIO,
-        rate_per_minute=10,
-        minimum_charge=10  # 1 minute minimum
-    ),
-    CallType.VIDEO: CallRateConfig(
-        call_type=CallType.VIDEO,
-        rate_per_minute=60,
-        minimum_charge=60  # 1 minute minimum
-    )
+    CallType.AUDIO: {
+        "rate_per_minute": 10,
+        "minimum_charge": 10  # 1 minute minimum
+    },
+    CallType.VIDEO: {
+        "rate_per_minute": 60,
+        "minimum_charge": 60  # 1 minute minimum
+    }
 }
-
-# Listener earnings in rupees per minute
-LISTENER_EARNINGS = {
-    CallType.AUDIO: 1,  # 1 rupee per minute
-    CallType.VIDEO: 6   # 6 rupees per minute
-}
-
-# Recharge rates (rupees to coins conversion)
-RECHARGE_RATES = {
-    "150": 300,  # 150 rupees = 300 coins
-    "300": 600,  # 300 rupees = 600 coins
-    "500": 1000, # 500 rupees = 1000 coins
-    "1000": 2000 # 1000 rupees = 2000 coins
-}
-
-class RechargeRequest(BaseModel):
-    amount_rupees: int = Field(..., description="Amount in rupees to recharge")
-    payment_method: str = Field(..., description="Payment method (upi, card, wallet)")
-
-class RechargeResponse(BaseModel):
-    transaction_id: str
-    amount_rupees: int
-    coins_added: int
-    new_balance: int
-    message: str
-
-class RechargeHistoryResponse(BaseModel):
-    transactions: list[dict]
-    total_recharged: int
-    total_coins_added: int
-    page: int
-    per_page: int
-    has_next: bool
-    has_previous: bool
-
-class TransactionType(str, Enum):
-    PURCHASE = "purchase"
-    SPEND = "spend"
-    EARN = "earn"
-    WITHDRAW = "withdraw"
-    BONUS = "bonus"
-    REFERRAL_BONUS = "referral_bonus"
-
-class TransactionInfo(BaseModel):
-    transaction_id: int
-    tx_type: TransactionType
-    coins_change: int
-    money_change: float
-    description: str
-    call_id: Optional[int] = None
-    created_at: datetime
-
-class UserTransactionHistoryResponse(BaseModel):
-    transactions: list[TransactionInfo]
-    total_coins_spent: int
-    total_money_spent: float
-    total_coins_earned: int
-    total_money_earned: float
-    current_balance: int
-    page: int
-    per_page: int
-    has_next: bool
-    has_previous: bool
-
-class ListenerTransactionHistoryResponse(BaseModel):
-    transactions: list[TransactionInfo]
-    total_coins_earned: int
-    total_money_earned: float
-    total_calls_completed: int
-    current_withdrawable_balance: float
-    page: int
-    per_page: int
-    has_next: bool
-    has_previous: bool

@@ -1,19 +1,20 @@
 ---
-sidebar_position: 10
-title: Verification API
-description: Listener verification system with audio sample uploads
+sidebar_position: 8
+title: Listener Verification API
+description: Audio verification system for listeners
 ---
 
-# Verification API
+# Listener Verification API
 
-The Verification API provides a comprehensive system for listener verification through audio sample uploads and admin review processes.
+The Listener Verification API provides a comprehensive audio verification system for listeners, allowing them to upload audio samples for review and verification.
 
 ## Overview
 
-- **Audio Upload**: Upload verification audio files or URLs
+- **Audio Upload**: Upload audio files for verification
 - **Status Tracking**: Track verification status and history
-- **Admin Review**: Admin review and approval system
-- **S3 Integration**: Secure file storage with AWS S3
+- **Admin Review**: Admin endpoints for reviewing submissions
+- **S3 Integration**: Secure file storage and management
+- **Role-based Access**: Listener-only verification system
 
 ## Endpoints
 
@@ -30,29 +31,35 @@ Content-Type: multipart/form-data
 ```
 
 **Request Body:**
-- `audio_file`: Audio file (MP3, WAV, M4A, etc.)
-- `description`: Optional description of the audio sample
+- `audio_file`: Audio file (multipart/form-data)
+
+**File Requirements:**
+- **Format**: MP3, WAV, M4A, or other audio formats
+- **Size**: Maximum 10MB
+- **Content-Type**: Must be audio/*
 
 **Response:**
 ```json
 {
-  "verification_id": 123,
+  "sample_id": 123,
+  "listener_id": 456,
+  "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
   "status": "pending",
-  "audio_url": "https://s3.amazonaws.com/bucket/verification/123/audio.mp3",
+  "remarks": null,
   "uploaded_at": "2024-01-15T10:30:00Z",
-  "message": "Audio file uploaded successfully"
+  "reviewed_at": null
 }
 ```
 
-**File Requirements:**
-- **Formats**: MP3, WAV, M4A, AAC
-- **Size**: Maximum 10MB
-- **Duration**: 30 seconds to 5 minutes
-- **Quality**: Clear, audible speech
+**Error Responses:**
+- `400 Bad Request` - Invalid file type or size
+- `403 Forbidden` - Only listeners can upload verification audio
+- `409 Conflict` - Already have a pending verification
+- `500 Internal Server Error` - S3 upload failed
 
 ### Upload Audio URL
 
-Upload an audio file via URL for listener verification.
+Upload verification audio using an S3 URL (for external uploads).
 
 **Endpoint:** `POST /verification/upload-audio-url`
 
@@ -65,25 +72,34 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "audio_url": "https://example.com/audio-sample.mp3",
-  "description": "Verification audio sample"
+  "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3"
 }
 ```
+
+**Fields:**
+- `audio_file_url`: S3 URL for the audio file
 
 **Response:**
 ```json
 {
-  "verification_id": 124,
+  "sample_id": 123,
+  "listener_id": 456,
+  "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
   "status": "pending",
-  "audio_url": "https://example.com/audio-sample.mp3",
+  "remarks": null,
   "uploaded_at": "2024-01-15T10:30:00Z",
-  "message": "Audio URL submitted successfully"
+  "reviewed_at": null
 }
 ```
 
+**Error Responses:**
+- `400 Bad Request` - Invalid S3 URL format
+- `403 Forbidden` - Only listeners can upload verification audio
+- `409 Conflict` - Already have a pending verification
+
 ### Get Verification Status
 
-Get current verification status for the user.
+Get the current verification status for the listener.
 
 **Endpoint:** `GET /verification/status`
 
@@ -95,30 +111,30 @@ Authorization: Bearer <access_token>
 **Response:**
 ```json
 {
-  "user_id": 123,
-  "verification_status": "pending",
-  "current_verification": {
-    "verification_id": 123,
-    "status": "pending",
-    "audio_url": "https://s3.amazonaws.com/bucket/verification/123/audio.mp3",
-    "submitted_at": "2024-01-15T10:30:00Z",
-    "reviewed_at": null,
-    "reviewer_notes": null
-  },
   "is_verified": false,
-  "verification_count": 1
+  "verification_status": "pending",
+  "last_verification": {
+    "sample_id": 123,
+    "listener_id": 456,
+    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
+    "status": "pending",
+    "remarks": null,
+    "uploaded_at": "2024-01-15T10:30:00Z",
+    "reviewed_at": null
+  },
+  "message": "Verification status: pending"
 }
 ```
 
-**Status Values:**
-- `pending`: Awaiting admin review
-- `approved`: Verification approved
-- `rejected`: Verification rejected
-- `expired`: Verification expired
+**Field Descriptions:**
+- `is_verified`: Whether the listener is verified
+- `verification_status`: Current status ("pending", "approved", "rejected")
+- `last_verification`: Details of the latest verification submission
+- `message`: Human-readable status message
 
 ### Get Verification History
 
-Get verification history for the user.
+Get the complete verification history for the listener.
 
 **Endpoint:** `GET /verification/history`
 
@@ -129,38 +145,33 @@ Authorization: Bearer <access_token>
 
 **Response:**
 ```json
-{
-  "verifications": [
-    {
-      "verification_id": 123,
-      "status": "approved",
-      "audio_url": "https://s3.amazonaws.com/bucket/verification/123/audio.mp3",
-      "submitted_at": "2024-01-15T10:30:00Z",
-      "reviewed_at": "2024-01-15T11:00:00Z",
-      "reviewer_notes": "Good quality audio, approved",
-      "reviewer_id": 456
-    },
-    {
-      "verification_id": 122,
-      "status": "rejected",
-      "audio_url": "https://s3.amazonaws.com/bucket/verification/122/audio.mp3",
-      "submitted_at": "2024-01-14T15:30:00Z",
-      "reviewed_at": "2024-01-14T16:00:00Z",
-      "reviewer_notes": "Audio quality too poor, please resubmit",
-      "reviewer_id": 456
-    }
-  ],
-  "total_count": 2,
-  "approved_count": 1,
-  "rejected_count": 1
-}
+[
+  {
+    "sample_id": 123,
+    "listener_id": 456,
+    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
+    "status": "pending",
+    "remarks": null,
+    "uploaded_at": "2024-01-15T10:30:00Z",
+    "reviewed_at": null
+  },
+  {
+    "sample_id": 122,
+    "listener_id": 456,
+    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240114_150000_def456.mp3",
+    "status": "rejected",
+    "remarks": "Audio quality too low",
+    "uploaded_at": "2024-01-14T15:00:00Z",
+    "reviewed_at": "2024-01-14T16:30:00Z"
+  }
+]
 ```
 
 ## Admin Endpoints
 
 ### Get Pending Verifications
 
-Get all pending verifications for admin review.
+Get all pending verification requests (admin only).
 
 **Endpoint:** `GET /admin/verification/pending`
 
@@ -169,34 +180,28 @@ Get all pending verifications for admin review.
 Authorization: Bearer <access_token>
 ```
 
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `per_page`: Items per page (default: 20, max: 100)
+
 **Response:**
 ```json
-{
-  "pending_verifications": [
-    {
-      "verification_id": 125,
-      "user_id": 789,
-      "username": "jane_listener",
-      "audio_url": "https://s3.amazonaws.com/bucket/verification/125/audio.mp3",
-      "submitted_at": "2024-01-15T10:30:00Z",
-      "description": "Professional listener verification"
-    },
-    {
-      "verification_id": 126,
-      "user_id": 790,
-      "username": "bob_listener",
-      "audio_url": "https://s3.amazonaws.com/bucket/verification/126/audio.mp3",
-      "submitted_at": "2024-01-15T09:15:00Z",
-      "description": "New listener verification"
-    }
-  ],
-  "total_pending": 2
-}
+[
+  {
+    "sample_id": 123,
+    "listener_id": 456,
+    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
+    "status": "pending",
+    "remarks": null,
+    "uploaded_at": "2024-01-15T10:30:00Z",
+    "reviewed_at": null
+  }
+]
 ```
 
 ### Review Verification
 
-Review and approve/reject a verification.
+Review and approve/reject verification request (admin only).
 
 **Endpoint:** `POST /admin/verification/review`
 
@@ -209,90 +214,122 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "verification_id": 125,
-  "action": "approve",
-  "reviewer_notes": "Excellent audio quality, clear pronunciation, approved"
+  "sample_id": 123,
+  "status": "approved",
+  "remarks": "Audio quality is excellent"
 }
 ```
 
-**Actions:**
-- `approve`: Approve the verification
-- `reject`: Reject the verification
+**Fields:**
+- `sample_id`: ID of the verification sample
+- `status`: Review decision ("approved" or "rejected")
+- `remarks`: Optional remarks for the listener
 
 **Response:**
 ```json
 {
-  "verification_id": 125,
-  "status": "approved",
-  "reviewer_notes": "Excellent audio quality, clear pronunciation, approved",
-  "reviewed_at": "2024-01-15T11:00:00Z",
-  "reviewer_id": 456,
-  "message": "Verification approved successfully"
+  "success": true,
+  "message": "Verification approved successfully with remarks: Audio quality is excellent",
+  "verification": {
+    "sample_id": 123,
+    "listener_id": 456,
+    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
+    "status": "approved",
+    "remarks": "Audio quality is excellent",
+    "uploaded_at": "2024-01-15T10:30:00Z",
+    "reviewed_at": "2024-01-15T11:00:00Z"
+  }
 }
 ```
 
-## Verification Process
+## Verification Statuses
 
-### 1. User Uploads Audio
+### Pending
+- **Description**: Verification is awaiting review
+- **Action**: Admin needs to review the audio sample
+- **Duration**: Typically reviewed within 24-48 hours
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant A as API
-    participant S as S3
-    participant D as Database
+### Approved
+- **Description**: Verification has been approved
+- **Action**: Listener is now verified
+- **Benefits**: Access to verified listener features
 
-    U->>A: POST /verification/upload-audio-file
-    A->>S: Upload audio file
-    S-->>A: Return file URL
-    A->>D: Store verification record
-    A-->>U: Return verification ID
-```
+### Rejected
+- **Description**: Verification has been rejected
+- **Action**: Listener can upload a new sample
+- **Reason**: Usually includes remarks explaining rejection
 
-### 2. Admin Review Process
+## File Management
 
-```mermaid
-sequenceDiagram
-    participant Admin as Admin
-    participant A as API
-    participant D as Database
-    participant U as User
+### S3 Integration
 
-    Admin->>A: GET /admin/verification/pending
-    A-->>Admin: Return pending verifications
-    Admin->>A: POST /admin/verification/review
-    A->>D: Update verification status
-    A-->>Admin: Return review result
-    A->>U: Notify user of decision
-```
+The verification system uses AWS S3 for secure file storage:
 
-## Error Responses
+- **Bucket**: Configurable S3 bucket
+- **Path**: `verification-audio/{user_id}/{timestamp}_{unique_id}.{extension}`
+- **Access**: Private files with signed URLs
+- **Retention**: Files are retained for audit purposes
 
-### 400 Bad Request
+### File Validation
+
+**Supported Formats:**
+- MP3 (audio/mpeg)
+- WAV (audio/wav)
+- M4A (audio/mp4)
+- OGG (audio/ogg)
+
+**Size Limits:**
+- Maximum file size: 10MB
+- Minimum file size: 1KB
+
+**Content Validation:**
+- Must be valid audio file
+- Content-Type must start with "audio/"
+- File must be readable and playable
+
+## Error Handling
+
+### Common Error Responses
+
+**Invalid File Type (400):**
 ```json
 {
-  "detail": "Invalid file format. Supported formats: MP3, WAV, M4A, AAC"
+  "detail": "File must be an audio file (mp3, wav, m4a, etc.)"
 }
 ```
 
-### 413 Payload Too Large
+**File Too Large (400):**
 ```json
 {
-  "detail": "File too large. Maximum size: 10MB"
+  "detail": "File size must be less than 10MB"
 }
 ```
 
-### 404 Not Found
+**Not a Listener (403):**
 ```json
 {
-  "detail": "Verification not found"
+  "detail": "Only users with listener role can upload verification audio"
 }
 ```
 
-### 403 Forbidden
+**Pending Verification (409):**
 ```json
 {
-  "detail": "Admin access required"
+  "detail": "You already have a pending verification. Please wait for it to be reviewed."
+}
+```
+
+**S3 Not Configured (500):**
+```json
+{
+  "detail": "File upload service is not configured. Please contact support."
+}
+```
+
+**Upload Failed (500):**
+```json
+{
+  "detail": "Failed to upload file. Please try again."
 }
 ```
 
@@ -304,61 +341,73 @@ sequenceDiagram
 // services/VerificationService.ts
 import ApiService from './ApiService';
 
-export interface VerificationUpload {
-  verification_id: number;
-  status: string;
-  audio_url: string;
+export interface ListenerVerificationResponse {
+  sample_id: number;
+  listener_id: number;
+  audio_file_url: string;
+  status: 'pending' | 'approved' | 'rejected';
+  remarks: string | null;
   uploaded_at: string;
+  reviewed_at: string | null;
+}
+
+export interface VerificationStatusResponse {
+  is_verified: boolean;
+  verification_status: 'pending' | 'approved' | 'rejected' | null;
+  last_verification: ListenerVerificationResponse | null;
   message: string;
 }
 
-export interface VerificationStatus {
-  user_id: number;
-  verification_status: string;
-  current_verification?: {
-    verification_id: number;
-    status: string;
-    audio_url: string;
-    submitted_at: string;
-    reviewed_at?: string;
-    reviewer_notes?: string;
-  };
-  is_verified: boolean;
-  verification_count: number;
+export interface AdminReviewRequest {
+  sample_id: number;
+  status: 'approved' | 'rejected';
+  remarks?: string;
 }
 
 class VerificationService {
   // Upload audio file
-  async uploadAudioFile(audioFile: File, description?: string): Promise<VerificationUpload> {
+  async uploadAudioFile(audioFile: File): Promise<ListenerVerificationResponse> {
     const formData = new FormData();
     formData.append('audio_file', audioFile);
-    if (description) {
-      formData.append('description', description);
-    }
 
-    return ApiService.post<VerificationUpload>('/verification/upload-audio-file', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    return ApiService.post<ListenerVerificationResponse>(
+      '/verification/upload-audio-file',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    );
   }
 
   // Upload audio URL
-  async uploadAudioUrl(audioUrl: string, description?: string): Promise<VerificationUpload> {
-    return ApiService.post<VerificationUpload>('/verification/upload-audio-url', {
-      audio_url: audioUrl,
-      description,
+  async uploadAudioUrl(audioFileUrl: string): Promise<ListenerVerificationResponse> {
+    return ApiService.post<ListenerVerificationResponse>('/verification/upload-audio-url', {
+      audio_file_url: audioFileUrl
     });
   }
 
   // Get verification status
-  async getVerificationStatus(): Promise<VerificationStatus> {
-    return ApiService.get<VerificationStatus>('/verification/status');
+  async getVerificationStatus(): Promise<VerificationStatusResponse> {
+    return ApiService.get<VerificationStatusResponse>('/verification/status');
   }
 
   // Get verification history
-  async getVerificationHistory(): Promise<any> {
-    return ApiService.get('/verification/history');
+  async getVerificationHistory(): Promise<ListenerVerificationResponse[]> {
+    return ApiService.get<ListenerVerificationResponse[]>('/verification/history');
+  }
+
+  // Admin: Get pending verifications
+  async getPendingVerifications(page: number = 1, perPage: number = 20): Promise<ListenerVerificationResponse[]> {
+    return ApiService.get<ListenerVerificationResponse[]>(
+      `/admin/verification/pending?page=${page}&per_page=${perPage}`
+    );
+  }
+
+  // Admin: Review verification
+  async reviewVerification(request: AdminReviewRequest): Promise<any> {
+    return ApiService.post('/admin/verification/review', request);
   }
 }
 
@@ -367,70 +416,80 @@ export default new VerificationService();
 
 ### cURL Examples
 
+**Upload Audio File:**
 ```bash
-# Upload audio file
-curl -X POST "https://saathiiapp.com/verification/upload-audio-file" \
-  -H "Authorization: Bearer <access_token>" \
-  -F "audio_file=@/path/to/audio.mp3" \
-  -F "description=Verification audio sample"
+curl -X POST 'https://saathiiapp.com/verification/upload-audio-file' \
+  -H 'Authorization: Bearer <access_token>' \
+  -F 'audio_file=@/path/to/audio.mp3'
+```
 
-# Upload audio URL
-curl -X POST "https://saathiiapp.com/verification/upload-audio-url" \
-  -H "Authorization: Bearer <access_token>" \
-  -H "Content-Type: application/json" \
+**Upload Audio URL:**
+```bash
+curl -X POST 'https://saathiiapp.com/verification/upload-audio-url' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'Content-Type: application/json' \
   -d '{
-    "audio_url": "https://example.com/audio-sample.mp3",
-    "description": "Verification audio sample"
+    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3"
   }'
+```
 
-# Get verification status
-curl -X GET "https://saathiiapp.com/verification/status" \
-  -H "Authorization: Bearer <access_token>"
+**Get Verification Status:**
+```bash
+curl -X GET 'https://saathiiapp.com/verification/status' \
+  -H 'Authorization: Bearer <access_token>'
+```
 
-# Get verification history
-curl -X GET "https://saathiiapp.com/verification/history" \
-  -H "Authorization: Bearer <access_token>"
+**Get Verification History:**
+```bash
+curl -X GET 'https://saathiiapp.com/verification/history' \
+  -H 'Authorization: Bearer <access_token>'
+```
 
-# Get pending verifications (Admin)
-curl -X GET "https://saathiiapp.com/admin/verification/pending" \
-  -H "Authorization: Bearer <admin_token>"
-
-# Review verification (Admin)
-curl -X POST "https://saathiiapp.com/admin/verification/review" \
-  -H "Authorization: Bearer <admin_token>" \
-  -H "Content-Type: application/json" \
+**Admin: Review Verification:**
+```bash
+curl -X POST 'https://saathiiapp.com/admin/verification/review' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'Content-Type: application/json' \
   -d '{
-    "verification_id": 125,
-    "action": "approve",
-    "reviewer_notes": "Excellent audio quality"
+    "sample_id": 123,
+    "status": "approved",
+    "remarks": "Audio quality is excellent"
   }'
 ```
 
 ## Best Practices
 
-### Audio Quality
+### File Upload
 
-1. **Clear Speech**: Ensure clear, audible speech
-2. **Good Quality**: Use good quality recording equipment
-3. **Appropriate Length**: 30 seconds to 5 minutes
-4. **No Background Noise**: Minimize background noise
+1. **File Validation**: Validate file type and size before upload
+2. **Progress Tracking**: Show upload progress to users
+3. **Error Handling**: Handle upload errors gracefully
+4. **Retry Logic**: Implement retry for failed uploads
 
-### File Management
+### User Experience
 
-1. **Format Support**: Use supported audio formats
-2. **Size Limits**: Respect file size limits
-3. **Secure Upload**: Use secure upload methods
-4. **Error Handling**: Handle upload errors gracefully
+1. **Clear Instructions**: Provide clear instructions for audio requirements
+2. **Status Updates**: Keep users informed about verification status
+3. **Feedback**: Provide helpful feedback for rejected verifications
+4. **History**: Show verification history for transparency
 
-### Admin Review
+### Security
 
-1. **Thorough Review**: Listen to entire audio sample
-2. **Clear Notes**: Provide clear reviewer notes
-3. **Consistent Standards**: Apply consistent review standards
-4. **Timely Processing**: Process verifications promptly
+1. **File Validation**: Strictly validate uploaded files
+2. **Access Control**: Ensure only listeners can upload
+3. **S3 Security**: Use secure S3 configurations
+4. **Admin Access**: Protect admin endpoints appropriately
+
+### Performance
+
+1. **File Size Limits**: Enforce reasonable file size limits
+2. **Async Processing**: Handle file uploads asynchronously
+3. **Caching**: Cache verification status for better performance
+4. **Cleanup**: Implement file cleanup for old verifications
 
 ## Next Steps
 
-- Learn about [User Management API](./user-management) for profile operations
-- Explore [Presence & Status API](./presence-status) for user status
-- Check out [WebSocket Integration](./websocket-realtime) for real-time updates
+- Learn about [User Management API](./user-management) for profile management
+- Explore [Call Management API](./call-management) for making calls
+- Check out [S3 Setup Guide](./s3-setup) for file storage configuration
+- Access the [WebSocket Integration](./websocket-realtime) for real-time updates

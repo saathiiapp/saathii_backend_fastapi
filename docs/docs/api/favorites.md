@@ -1,25 +1,26 @@
 ---
-sidebar_position: 7
+sidebar_position: 6
 title: Favorites API
 description: Manage favorite listeners and user preferences
 ---
 
 # Favorites API
 
-The Favorites API allows users to manage their favorite listeners and track their preferences.
+The Favorites API allows users to manage their favorite listeners, providing quick access to preferred users and enhanced discovery features.
 
 ## Overview
 
-- **Favorite Management**: Add and remove favorite listeners
-- **Favorites List**: Get paginated list of favorite users
-- **Status Checking**: Check if a user is favorited
-- **User Preferences**: Track user interaction patterns
+- **Add/Remove Favorites**: Add or remove listeners from favorites
+- **Favorites List**: Get paginated list of favorite listeners
+- **Status Checking**: Check if a listener is favorited
+- **Real-time Updates**: Live updates when favorites change
+- **Filtering**: Filter favorites by availability and status
 
 ## Endpoints
 
-### Add Favorite
+### Add to Favorites
 
-Add a listener to favorites list.
+Add a listener to your favorites list.
 
 **Endpoint:** `POST /favorites/add`
 
@@ -37,21 +38,26 @@ Content-Type: application/json
 ```
 
 **Fields:**
-- `listener_id`: ID of the listener to add to favorites (required)
+- `listener_id`: ID of the listener to add to favorites
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Listener added to favorites successfully",
+  "message": "Successfully added jane_smith to favorites",
   "listener_id": 123,
   "is_favorited": true
 }
 ```
 
-### Remove Favorite
+**Error Responses:**
+- `400 Bad Request` - Cannot favorite yourself
+- `404 Not Found` - Listener not found
+- `409 Conflict` - Already favorited (returns success with message)
 
-Remove a listener from favorites list.
+### Remove from Favorites
+
+Remove a listener from your favorites list.
 
 **Endpoint:** `DELETE /favorites/remove`
 
@@ -69,21 +75,25 @@ Content-Type: application/json
 ```
 
 **Fields:**
-- `listener_id`: ID of the listener to remove from favorites (required)
+- `listener_id`: ID of the listener to remove from favorites
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Listener removed from favorites successfully",
+  "message": "Successfully removed jane_smith from favorites",
   "listener_id": 123,
   "is_favorited": false
 }
 ```
 
+**Error Responses:**
+- `404 Not Found` - Listener not found
+- `409 Conflict` - Not in favorites (returns success with message)
+
 ### Get Favorites
 
-Get paginated list of favorite listeners.
+Get a paginated list of your favorite listeners.
 
 **Endpoint:** `GET /favorites`
 
@@ -93,8 +103,18 @@ Authorization: Bearer <access_token>
 ```
 
 **Query Parameters:**
-- `page`: Page number (default: 1)
-- `per_page`: Items per page (default: 20, max: 100)
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `page` | integer | Page number (1-based) | 1 |
+| `per_page` | integer | Items per page (max 100) | 20 |
+| `online_only` | boolean | Show only online favorites | false |
+| `available_only` | boolean | Show only available favorites (online and not busy) | false |
+
+**Example Request:**
+```
+GET /favorites?page=1&per_page=10&online_only=true
+```
 
 **Response:**
 ```json
@@ -102,38 +122,52 @@ Authorization: Bearer <access_token>
   "favorites": [
     {
       "user_id": 123,
-      "username": "alice_listener",
+      "username": "jane_smith",
       "sex": "female",
       "bio": "Professional listener with 5 years experience...",
+      "interests": ["music", "tech", "art"],
       "profile_image_url": "https://example.com/profile.jpg",
+      "preferred_language": "en",
       "rating": 4.8,
+      "country": "US",
       "is_online": true,
+      "last_seen": "2024-01-15T10:30:00Z",
       "is_busy": false,
-      "favorited_at": "2024-01-15T10:30:00Z"
+      "wait_time": null,
+      "is_available": true,
+      "favorited_at": "2024-01-15T09:00:00Z"
     }
   ],
-  "total_count": 5,
+  "total_count": 25,
+  "online_count": 8,
+  "available_count": 6,
   "page": 1,
-  "per_page": 20,
-  "has_next": false,
+  "per_page": 10,
+  "has_next": true,
   "has_previous": false
 }
 ```
 
-**Fields:**
-- `user_id`: Listener's user ID
-- `username`: Listener's username
-- `sex`: Listener's gender
-- `bio`: Listener's biography
+**Field Descriptions:**
+- `user_id`: Unique user identifier
+- `username`: User's display name
+- `sex`: Gender ("male", "female")
+- `bio`: User biography/description
+- `interests`: Array of interest tags
 - `profile_image_url`: Profile image URL
-- `rating`: Listener's rating (0.0-5.0)
+- `preferred_language`: Language preference
+- `rating`: User rating (0.0-5.0)
+- `country`: Country code
 - `is_online`: Current online status
-- `is_busy`: Current busy status
-- `favorited_at`: When the listener was added to favorites
+- `last_seen`: Last activity timestamp
+- `is_busy`: Whether user is currently busy (in a call)
+- `wait_time`: Expected call duration in minutes (if on call)
+- `is_available`: True if online and not busy
+- `favorited_at`: When the user was added to favorites
 
 ### Check Favorite Status
 
-Check if a specific listener is in favorites.
+Check if a specific listener is in your favorites.
 
 **Endpoint:** `GET /favorites/check/{listener_id}`
 
@@ -149,15 +183,76 @@ Authorization: Bearer <access_token>
 ```json
 {
   "success": true,
-  "message": "Listener is in favorites",
+  "message": "jane_smith is in favorites",
   "listener_id": 123,
   "is_favorited": true
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Listener not found
+
+## Filtering Options
+
+### Online Only Filter
+
+Show only online favorites:
+```
+GET /favorites?online_only=true
+```
+
+### Available Only Filter
+
+Show only available favorites (online and not busy):
+```
+GET /favorites?available_only=true
+```
+
+### Combined Filters
+
+Combine multiple filters:
+```
+GET /favorites?online_only=true&page=1&per_page=20
+```
+
+## Real-time Updates
+
+### WebSocket Integration
+
+Favorites updates are broadcast in real-time via WebSocket:
+
+**Connection:**
+```
+wss://your-api-domain.com/ws/feed?token=<access_token>
+```
+
+**Message Types:**
+- `favorite_added` - User added you to favorites
+- `favorite_removed` - User removed you from favorites
+
+**Example Message:**
+```json
+{
+  "type": "favorite_added",
+  "data": {
+    "user_id": 123,
+    "username": "jane_smith",
+    "action": "added_you_to_favorites"
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
 
 ## Error Handling
 
 ### Common Error Responses
+
+**Cannot Favorite Self (400):**
+```json
+{
+  "detail": "Cannot favorite yourself"
+}
+```
 
 **Listener Not Found (404):**
 ```json
@@ -166,31 +261,23 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Already Favorited (400):**
+**Already Favorited (200):**
 ```json
 {
-  "detail": "Listener is already in favorites"
+  "success": true,
+  "message": "Already favorited jane_smith",
+  "listener_id": 123,
+  "is_favorited": true
 }
 ```
 
-**Not Favorited (400):**
+**Not in Favorites (200):**
 ```json
 {
-  "detail": "Listener is not in favorites"
-}
-```
-
-**Invalid Page (400):**
-```json
-{
-  "detail": "Page must be a positive integer"
-}
-```
-
-**Invalid Per Page (400):**
-```json
-{
-  "detail": "Per page must be between 1 and 100"
+  "success": true,
+  "message": "jane_smith was not in favorites",
+  "listener_id": 123,
+  "is_favorited": false
 }
 ```
 
@@ -199,80 +286,157 @@ Authorization: Bearer <access_token>
 ### React Native Integration
 
 ```typescript
-// Add to favorites
-const addFavorite = async (token: string, listenerId: number) => {
-  const response = await fetch('https://saathiiapp.com/favorites/add', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ listener_id: listenerId })
-  });
-  return response.json();
-};
+// services/FavoritesService.ts
+import ApiService from './ApiService';
 
-// Remove from favorites
-const removeFavorite = async (token: string, listenerId: number) => {
-  const response = await fetch('https://saathiiapp.com/favorites/remove', {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ listener_id: listenerId })
-  });
-  return response.json();
-};
+export interface FavoriteUser {
+  user_id: number;
+  username: string;
+  sex: string;
+  bio: string;
+  interests: string[];
+  profile_image_url: string;
+  preferred_language: string;
+  rating: number;
+  country: string;
+  is_online: boolean;
+  last_seen: string;
+  is_busy: boolean;
+  wait_time: number | null;
+  is_available: boolean;
+  favorited_at: string;
+}
 
-// Get favorites list
-const getFavorites = async (token: string, page: number = 1) => {
-  const response = await fetch(`https://saathiiapp.com/favorites?page=${page}&per_page=20`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+export interface FavoritesResponse {
+  favorites: FavoriteUser[];
+  total_count: number;
+  online_count: number;
+  available_count: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface FavoriteActionResponse {
+  success: boolean;
+  message: string;
+  listener_id: number;
+  is_favorited: boolean;
+}
+
+class FavoritesService {
+  // Add to favorites
+  async addFavorite(listenerId: number): Promise<FavoriteActionResponse> {
+    return ApiService.post<FavoriteActionResponse>('/favorites/add', {
+      listener_id: listenerId
+    });
+  }
+
+  // Remove from favorites
+  async removeFavorite(listenerId: number): Promise<FavoriteActionResponse> {
+    return ApiService.delete<FavoriteActionResponse>('/favorites/remove', {
+      listener_id: listenerId
+    });
+  }
+
+  // Get favorites
+  async getFavorites(filters: {
+    page?: number;
+    per_page?: number;
+    online_only?: boolean;
+    available_only?: boolean;
+  } = {}): Promise<FavoritesResponse> {
+    const params = new URLSearchParams();
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, value.toString());
+      }
+    });
+
+    return ApiService.get<FavoritesResponse>(`/favorites?${params.toString()}`);
+  }
+
+  // Check favorite status
+  async checkFavoriteStatus(listenerId: number): Promise<FavoriteActionResponse> {
+    return ApiService.get<FavoriteActionResponse>(`/favorites/check/${listenerId}`);
+  }
+}
+
+export default new FavoritesService();
+```
+
+### JavaScript/WebSocket Integration
+
+```javascript
+class FavoritesWebSocketManager {
+  constructor(token) {
+    this.token = token;
+    this.ws = null;
+  }
+
+  connect() {
+    const wsUrl = `wss://your-api-domain.com/ws/feed?token=${this.token}`;
+    this.ws = new WebSocket(wsUrl);
+
+    this.ws.onopen = () => {
+      console.log('Favorites WebSocket connected');
+    };
+
+    this.ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      this.handleMessage(message);
+    };
+
+    this.ws.onclose = () => {
+      console.log('Favorites WebSocket disconnected');
+    };
+  }
+
+  handleMessage(message) {
+    switch (message.type) {
+      case 'favorite_added':
+        this.onFavoriteAdded?.(message.data);
+        break;
+      case 'favorite_removed':
+        this.onFavoriteRemoved?.(message.data);
+        break;
+      default:
+        // Handle other message types
+        break;
     }
-  });
-  return response.json();
-};
+  }
 
-// Check favorite status
-const checkFavoriteStatus = async (token: string, listenerId: number) => {
-  const response = await fetch(`https://saathiiapp.com/favorites/check/${listenerId}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
     }
-  });
-  return response.json();
-};
+  }
+}
 ```
 
 ### cURL Examples
 
-**Add Favorite:**
+**Add to Favorites:**
 ```bash
 curl -X POST 'https://saathiiapp.com/favorites/add' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "listener_id": 123
-  }'
+  -d '{"listener_id": 123}'
 ```
 
-**Remove Favorite:**
+**Remove from Favorites:**
 ```bash
 curl -X DELETE 'https://saathiiapp.com/favorites/remove' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "listener_id": 123
-  }'
+  -d '{"listener_id": 123}'
 ```
 
 **Get Favorites:**
 ```bash
-curl -X GET 'https://saathiiapp.com/favorites?page=1&per_page=20' \
+curl -X GET 'https://saathiiapp.com/favorites?page=1&per_page=10&online_only=true' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
@@ -284,29 +448,30 @@ curl -X GET 'https://saathiiapp.com/favorites/check/123' \
 
 ## Best Practices
 
-### Favorites Management
-
-1. **Check Status**: Always check favorite status before showing UI
-2. **Optimistic Updates**: Update UI immediately, handle errors gracefully
-3. **Pagination**: Use pagination for large favorites lists
-4. **Caching**: Cache favorites list locally for better performance
-
 ### User Experience
 
-1. **Visual Feedback**: Show clear visual indicators for favorite status
-2. **Loading States**: Display loading indicators during operations
-3. **Error Handling**: Show user-friendly error messages
-4. **Confirmation**: Consider confirmation for remove actions
+1. **Immediate Feedback**: Show immediate UI feedback when adding/removing favorites
+2. **Error Handling**: Handle all error cases gracefully
+3. **Loading States**: Show loading indicators during operations
+4. **Confirmation**: Consider confirmation for removing favorites
 
 ### Performance
 
-1. **Lazy Loading**: Load favorites as needed
-2. **Caching**: Cache favorite status for frequently accessed users
-3. **Batch Operations**: Consider batch operations for multiple changes
-4. **Real-time Updates**: Update UI when favorites change
+1. **Pagination**: Use pagination for large favorites lists
+2. **Caching**: Cache favorites data locally
+3. **Real-time Updates**: Use WebSocket for live updates
+4. **Optimistic Updates**: Update UI optimistically for better UX
+
+### Data Management
+
+1. **State Synchronization**: Keep local state in sync with server
+2. **Conflict Resolution**: Handle conflicts when favorites change
+3. **Offline Support**: Consider offline functionality
+4. **Data Validation**: Validate data before sending to API
 
 ## Next Steps
 
-- Learn about [Blocking API](./blocking) for user blocking features
-- Explore [Feed System API](./feed-system) for discovering users
-- Check out [User Management API](./user-management) for profile management
+- Learn about [Blocking API](./blocking) for user blocking functionality
+- Explore [Call Management API](./call-management) for making calls to favorites
+- Check out [Feed System API](./feeds) for discovering new listeners
+- Access the [WebSocket Integration](./websocket-realtime) for real-time updates

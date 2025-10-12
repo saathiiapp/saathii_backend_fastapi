@@ -1,7 +1,7 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Header
-from app.clients.websocket_manager import manager
-from app.clients.jwt_handler import decode_jwt
-from app.clients.redis_client import redis_client
+from api.clients.websocket_manager import manager
+from api.clients.jwt_handler import decode_jwt
+from api.clients.redis_client import redis_client
 import json
 import logging
 

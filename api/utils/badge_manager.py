@@ -4,7 +4,7 @@ Badge management utilities for listener earnings
 import asyncio
 from datetime import datetime, date, timedelta
 from typing import Dict, Tuple, Optional
-from app.clients.db import get_db_pool
+from api.clients.db import get_db_pool
 
 # Badge configuration based on daily call duration
 BADGE_THRESHOLDS = {

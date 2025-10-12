@@ -1,8 +1,8 @@
 import asyncio
 from datetime import datetime
 from typing import Dict, Any
-from app.clients.websocket_manager import manager
-from app.clients.db import get_db_pool
+from api.clients.websocket_manager import manager
+from api.clients.db import get_db_pool
 import logging
 
 logger = logging.getLogger(__name__)

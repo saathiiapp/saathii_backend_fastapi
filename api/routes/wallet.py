@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import List, Optional
 from datetime import datetime
-from app.clients.redis_client import redis_client
-from app.clients.db import get_db_pool
-from app.clients.jwt_handler import decode_jwt
-from app.schemas.user import (
+from api.clients.redis_client import redis_client
+from api.clients.db import get_db_pool
+from api.clients.jwt_handler import decode_jwt
+from api.schemas.wallet import (
     UserBalanceResponse,
     AddCoinRequest,
     AddCoinResponse,

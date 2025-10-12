@@ -2,11 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import date
 from enum import Enum
-
-
-class SexEnum(str, Enum):
-    male = "male"
-    female = "female"
+from .user import SexEnum
 
 
 class OTPRequest(BaseModel):

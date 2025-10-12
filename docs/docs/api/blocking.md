@@ -1,25 +1,27 @@
 ---
-sidebar_position: 8
+sidebar_position: 7
 title: Blocking API
-description: User blocking and safety features
+description: User blocking and reporting functionality
 ---
 
 # Blocking API
 
-The Blocking API provides user blocking functionality and safety features to help users manage their interactions.
+The Blocking API provides comprehensive user blocking and reporting functionality, allowing users to block other users and manage their blocked list.
 
 ## Overview
 
-- **User Blocking**: Block and unblock other users
-- **Blocked Users List**: Manage list of blocked users
+- **Block Users**: Block users with optional reasons
+- **Unblock Users**: Remove users from blocked list
+- **Blocked List**: View paginated list of blocked users
 - **Status Checking**: Check if a user is blocked
-- **Safety Features**: Report and block inappropriate behavior
+- **Reporting**: Report users with different action types
+- **Filtering**: Filter blocked users by action type
 
 ## Endpoints
 
 ### Block User
 
-Block a user to prevent them from contacting you.
+Block a user with optional reason.
 
 **Endpoint:** `POST /block`
 
@@ -39,24 +41,29 @@ Content-Type: application/json
 ```
 
 **Fields:**
-- `blocked_id`: ID of the user to block (required)
-- `action_type`: Type of action - "block" or "report" (optional, default: "block")
-- `reason`: Optional reason for blocking (optional)
+- `blocked_id`: ID of the user to block
+- `action_type`: Type of action ("block" or "report")
+- `reason`: Optional reason for blocking
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "User blocked successfully",
+  "message": "Successfully blocked jane_smith",
   "blocked_id": 123,
   "action_type": "block",
   "is_blocked": true
 }
 ```
 
+**Error Responses:**
+- `400 Bad Request` - Cannot block yourself
+- `404 Not Found` - User not found
+- `409 Conflict` - Already blocked (returns success with message)
+
 ### Unblock User
 
-Unblock a previously blocked user.
+Remove a user from your blocked list.
 
 **Endpoint:** `DELETE /block`
 
@@ -74,22 +81,26 @@ Content-Type: application/json
 ```
 
 **Fields:**
-- `blocked_id`: ID of the user to unblock (required)
+- `blocked_id`: ID of the user to unblock
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "User unblocked successfully",
+  "message": "Successfully unblocked jane_smith",
   "blocked_id": 123,
   "action_type": "unblock",
   "is_blocked": false
 }
 ```
 
+**Error Responses:**
+- `404 Not Found` - User not found
+- `409 Conflict` - Not blocked (returns success with message)
+
 ### Get Blocked Users
 
-Get paginated list of blocked users.
+Get a paginated list of users you have blocked.
 
 **Endpoint:** `GET /blocked`
 
@@ -99,8 +110,17 @@ Authorization: Bearer <access_token>
 ```
 
 **Query Parameters:**
-- `page`: Page number (default: 1)
-- `per_page`: Items per page (default: 20, max: 100)
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `page` | integer | Page number (1-based) | 1 |
+| `per_page` | integer | Items per page (max 100) | 20 |
+| `action_type` | string | Filter by action type ("block", "report") | null |
+
+**Example Request:**
+```
+GET /blocked?page=1&per_page=10&action_type=block
+```
 
 **Response:**
 ```json
@@ -108,36 +128,36 @@ Authorization: Bearer <access_token>
   "blocked_users": [
     {
       "user_id": 123,
-      "username": "inappropriate_user",
-      "sex": "male",
-      "bio": "User bio...",
+      "username": "jane_smith",
+      "sex": "female",
+      "bio": "Professional listener...",
       "profile_image_url": "https://example.com/profile.jpg",
       "action_type": "block",
       "reason": "Inappropriate behavior",
       "blocked_at": "2024-01-15T10:30:00Z"
     }
   ],
-  "total_count": 3,
+  "total_count": 5,
   "page": 1,
-  "per_page": 20,
+  "per_page": 10,
   "has_next": false,
   "has_previous": false
 }
 ```
 
-**Fields:**
-- `user_id`: Blocked user's ID
-- `username`: Blocked user's username
-- `sex`: Blocked user's gender
-- `bio`: Blocked user's biography
+**Field Descriptions:**
+- `user_id`: Unique user identifier
+- `username`: User's display name
+- `sex`: Gender ("male", "female")
+- `bio`: User biography/description
 - `profile_image_url`: Profile image URL
-- `action_type`: Type of action taken
-- `reason`: Reason for blocking
+- `action_type`: Type of action taken ("block", "report")
+- `reason`: Reason for blocking (if provided)
 - `blocked_at`: When the user was blocked
 
 ### Check Block Status
 
-Check if a specific user is blocked.
+Check if a specific user is blocked by you.
 
 **Endpoint:** `GET /block/check/{user_id}`
 
@@ -153,50 +173,78 @@ Authorization: Bearer <access_token>
 ```json
 {
   "success": true,
-  "message": "User is blocked",
+  "message": "jane_smith is blocked",
   "blocked_id": 123,
+  "action_type": "block",
   "is_blocked": true
 }
 ```
 
+**Error Responses:**
+- `404 Not Found` - User not found
+
 ## Action Types
 
 ### Block Action
-- **Type**: `"block"`
-- **Description**: Block user from contacting you
-- **Effect**: User cannot call, message, or see you in feeds
-- **Reversible**: Yes, can be unblocked
+
+**Type:** `"block"`
+**Description:** Block the user from appearing in feeds and prevent communication
+**Usage:** Use when you want to completely block a user
 
 ### Report Action
-- **Type**: `"report"`
-- **Description**: Report user for inappropriate behavior
-- **Effect**: User is blocked and reported to moderators
-- **Reversible**: Yes, can be unblocked
+
+**Type:** `"report"`
+**Description:** Report the user for review by moderators
+**Usage:** Use when you want to report inappropriate behavior
+
+## Filtering Options
+
+### Action Type Filter
+
+Filter blocked users by action type:
+```
+GET /blocked?action_type=block
+GET /blocked?action_type=report
+```
+
+### Combined Filters
+
+Combine multiple filters:
+```
+GET /blocked?action_type=block&page=1&per_page=20
+```
+
+## Real-time Updates
+
+### WebSocket Integration
+
+Blocking updates are broadcast in real-time via WebSocket:
+
+**Connection:**
+```
+wss://your-api-domain.com/ws/feed?token=<access_token>
+```
+
+**Message Types:**
+- `user_blocked` - User blocked you
+- `user_unblocked` - User unblocked you
+
+**Example Message:**
+```json
+{
+  "type": "user_blocked",
+  "data": {
+    "user_id": 123,
+    "username": "jane_smith",
+    "action": "blocked_you"
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
 
 ## Error Handling
 
 ### Common Error Responses
-
-**User Not Found (404):**
-```json
-{
-  "detail": "User not found"
-}
-```
-
-**Already Blocked (400):**
-```json
-{
-  "detail": "User is already blocked"
-}
-```
-
-**Not Blocked (400):**
-```json
-{
-  "detail": "User is not blocked"
-}
-```
 
 **Cannot Block Self (400):**
 ```json
@@ -205,10 +253,32 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Invalid Action Type (400):**
+**User Not Found (404):**
 ```json
 {
-  "detail": "Invalid action type. Must be 'block' or 'report'"
+  "detail": "User not found"
+}
+```
+
+**Already Blocked (200):**
+```json
+{
+  "success": true,
+  "message": "Already blocked jane_smith",
+  "blocked_id": 123,
+  "action_type": "block",
+  "is_blocked": true
+}
+```
+
+**Not Blocked (200):**
+```json
+{
+  "success": true,
+  "message": "jane_smith was not blocked",
+  "blocked_id": 123,
+  "action_type": "unblock",
+  "is_blocked": false
 }
 ```
 
@@ -217,57 +287,127 @@ Authorization: Bearer <access_token>
 ### React Native Integration
 
 ```typescript
-// Block user
-const blockUser = async (token: string, userId: number, reason?: string) => {
-  const response = await fetch('https://saathiiapp.com/block', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      blocked_id: userId,
-      action_type: 'block',
+// services/BlockingService.ts
+import ApiService from './ApiService';
+
+export interface BlockedUser {
+  user_id: number;
+  username: string;
+  sex: string;
+  bio: string;
+  profile_image_url: string;
+  action_type: string;
+  reason: string | null;
+  blocked_at: string;
+}
+
+export interface BlockedUsersResponse {
+  blocked_users: BlockedUser[];
+  total_count: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface BlockActionResponse {
+  success: boolean;
+  message: string;
+  blocked_id: number;
+  action_type: string;
+  is_blocked: boolean;
+}
+
+class BlockingService {
+  // Block user
+  async blockUser(blockedId: number, actionType: string = 'block', reason?: string): Promise<BlockActionResponse> {
+    return ApiService.post<BlockActionResponse>('/block', {
+      blocked_id: blockedId,
+      action_type: actionType,
       reason: reason
-    })
-  });
-  return response.json();
-};
+    });
+  }
 
-// Unblock user
-const unblockUser = async (token: string, userId: number) => {
-  const response = await fetch('https://saathiiapp.com/block', {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ blocked_id: userId })
-  });
-  return response.json();
-};
+  // Unblock user
+  async unblockUser(blockedId: number): Promise<BlockActionResponse> {
+    return ApiService.delete<BlockActionResponse>('/block', {
+      blocked_id: blockedId
+    });
+  }
 
-// Get blocked users
-const getBlockedUsers = async (token: string, page: number = 1) => {
-  const response = await fetch(`https://saathiiapp.com/blocked?page=${page}&per_page=20`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+  // Get blocked users
+  async getBlockedUsers(filters: {
+    page?: number;
+    per_page?: number;
+    action_type?: string;
+  } = {}): Promise<BlockedUsersResponse> {
+    const params = new URLSearchParams();
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, value.toString());
+      }
+    });
+
+    return ApiService.get<BlockedUsersResponse>(`/blocked?${params.toString()}`);
+  }
+
+  // Check block status
+  async checkBlockStatus(userId: number): Promise<BlockActionResponse> {
+    return ApiService.get<BlockActionResponse>(`/block/check/${userId}`);
+  }
+}
+
+export default new BlockingService();
+```
+
+### JavaScript/WebSocket Integration
+
+```javascript
+class BlockingWebSocketManager {
+  constructor(token) {
+    this.token = token;
+    this.ws = null;
+  }
+
+  connect() {
+    const wsUrl = `wss://your-api-domain.com/ws/feed?token=${this.token}`;
+    this.ws = new WebSocket(wsUrl);
+
+    this.ws.onopen = () => {
+      console.log('Blocking WebSocket connected');
+    };
+
+    this.ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      this.handleMessage(message);
+    };
+
+    this.ws.onclose = () => {
+      console.log('Blocking WebSocket disconnected');
+    };
+  }
+
+  handleMessage(message) {
+    switch (message.type) {
+      case 'user_blocked':
+        this.onUserBlocked?.(message.data);
+        break;
+      case 'user_unblocked':
+        this.onUserUnblocked?.(message.data);
+        break;
+      default:
+        // Handle other message types
+        break;
     }
-  });
-  return response.json();
-};
+  }
 
-// Check block status
-const checkBlockStatus = async (token: string, userId: number) => {
-  const response = await fetch(`https://saathiiapp.com/block/check/${userId}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
     }
-  });
-  return response.json();
-};
+  }
+}
 ```
 
 ### cURL Examples
@@ -289,14 +429,12 @@ curl -X POST 'https://saathiiapp.com/block' \
 curl -X DELETE 'https://saathiiapp.com/block' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "blocked_id": 123
-  }'
+  -d '{"blocked_id": 123}'
 ```
 
 **Get Blocked Users:**
 ```bash
-curl -X GET 'https://saathiiapp.com/blocked?page=1&per_page=20' \
+curl -X GET 'https://saathiiapp.com/blocked?page=1&per_page=10&action_type=block' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
@@ -308,29 +446,30 @@ curl -X GET 'https://saathiiapp.com/block/check/123' \
 
 ## Best Practices
 
-### Blocking Management
-
-1. **Check Status**: Always check block status before showing user interactions
-2. **Confirmation**: Ask for confirmation before blocking users
-3. **Reason Tracking**: Encourage users to provide reasons for blocking
-4. **Regular Review**: Allow users to review and manage blocked users
-
 ### User Experience
 
-1. **Clear Indicators**: Show clear visual indicators for blocked users
-2. **Easy Access**: Make blocking/unblocking easily accessible
-3. **Feedback**: Provide clear feedback for blocking actions
-4. **Privacy**: Respect user privacy in blocked user lists
+1. **Confirmation**: Always confirm before blocking users
+2. **Clear Feedback**: Provide clear feedback about blocking actions
+3. **Easy Unblocking**: Make it easy to unblock users
+4. **Reason Tracking**: Track reasons for better moderation
 
-### Safety
+### Privacy and Safety
 
 1. **Immediate Effect**: Blocking should take effect immediately
-2. **No Contact**: Blocked users should not be able to contact you
-3. **Feed Filtering**: Blocked users should not appear in feeds
-4. **Call Prevention**: Blocked users should not be able to call you
+2. **Data Protection**: Protect blocked user data appropriately
+3. **Moderation**: Use reporting for serious issues
+4. **Appeal Process**: Consider appeal process for blocked users
+
+### Performance
+
+1. **Pagination**: Use pagination for blocked users list
+2. **Caching**: Cache block status for better performance
+3. **Real-time Updates**: Use WebSocket for live updates
+4. **Efficient Queries**: Optimize database queries for block checks
 
 ## Next Steps
 
-- Learn about [Favorites API](./favorites) for managing favorite users
-- Explore [User Management API](./user-management) for profile management
-- Check out [Feed System API](./feed-system) for user discovery
+- Learn about [Favorites API](./favorites) for managing favorite listeners
+- Explore [Call Management API](./call-management) for making calls
+- Check out [Feed System API](./feeds) for discovering users
+- Access the [WebSocket Integration](./websocket-realtime) for real-time updates

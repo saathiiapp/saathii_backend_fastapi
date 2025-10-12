@@ -2,14 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File,
 from typing import List, Optional
 import time
 from datetime import datetime
-from app.clients.redis_client import redis_client
-from app.clients.db import get_db_pool
-from app.clients.jwt_handler import decode_jwt
-from app.clients.s3_client import s3_client
-# Background functions moved to services - no longer needed in API
-from app.utils.realtime import broadcast_user_status_update, get_user_status_for_broadcast
-from app.utils.badge_manager import get_current_listener_badge
-from app.schemas.user import (
+from api.clients.redis_client import redis_client
+from api.clients.db import get_db_pool
+from api.clients.jwt_handler import decode_jwt
+from api.clients.s3_client import s3_client
+from api.utils.realtime import broadcast_user_status_update, get_user_status_for_broadcast
+from api.utils.badge_manager import get_current_listener_badge
+from api.schemas.user import (
     UserResponse, 
     EditUserRequest, 
     UserStatusResponse, 

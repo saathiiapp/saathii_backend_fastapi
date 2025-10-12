@@ -26,11 +26,11 @@ import ApiService from './ApiService';
 export interface BlockedUser {
   user_id: number;
   username: string;
-  sex: 'male' | 'female' | 'other';
   bio: string;
   profile_image_url?: string;
-  blocked_at: string;
+  action_type: string;
   reason?: string;
+  blocked_at: string;
 }
 
 export interface BlockedUsersResponse {
@@ -43,18 +43,20 @@ export interface BlockedUsersResponse {
 }
 
 export interface BlockUserRequest {
-  user_id: number;
+  blocked_id: number;
+  action_type?: string;
   reason?: string;
 }
 
 export interface UnblockUserRequest {
-  user_id: number;
+  blocked_id: number;
 }
 
 export interface BlockActionResponse {
   success: boolean;
   message: string;
-  user_id: number;
+  blocked_id: number;
+  action_type: string;
   is_blocked: boolean;
 }
 
@@ -66,17 +68,18 @@ export interface BlockStatusResponse {
 
 class BlockingService {
   // Block user
-  async blockUser(userId: number, reason?: string): Promise<BlockActionResponse> {
+  async blockUser(blockedId: number, actionType?: string, reason?: string): Promise<BlockActionResponse> {
     return ApiService.post<BlockActionResponse>('/block', {
-      user_id: userId,
+      blocked_id: blockedId,
+      action_type: actionType,
       reason,
     });
   }
 
   // Unblock user
-  async unblockUser(userId: number): Promise<BlockActionResponse> {
+  async unblockUser(blockedId: number): Promise<BlockActionResponse> {
     return ApiService.delete<BlockActionResponse>('/block', {
-      user_id: userId,
+      blocked_id: blockedId,
     });
   }
 

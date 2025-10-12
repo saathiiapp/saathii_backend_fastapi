@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException, Header
 import time
-from app.clients.redis_client import redis_client
-from app.clients.jwt_handler import (
+from api.clients.redis_client import redis_client
+from api.clients.jwt_handler import (
     create_access_token,
     create_refresh_token,
     create_registration_token,
     decode_jwt,
 )
-from app.clients.db import get_db_pool
-from app.schemas.auth import (
+from api.clients.db import get_db_pool
+from api.schemas.auth import (
     OTPRequest,
     VerifyRequest,
     TokenPairResponse,
@@ -16,7 +16,7 @@ from app.schemas.auth import (
     VerifyResponse,
     RegisterRequest,
 )
-from app.utils.otp import generate_otp, send_otp_message
+from api.utils.otp import generate_otp, send_otp_message
 
 router = APIRouter(tags=["Authentication"])
 

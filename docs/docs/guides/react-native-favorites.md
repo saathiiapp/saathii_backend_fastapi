@@ -26,12 +26,17 @@ import ApiService from './ApiService';
 export interface FavoriteUser {
   user_id: number;
   username: string;
-  sex: 'male' | 'female' | 'other';
   bio: string;
+  interests: string[];
   profile_image_url?: string;
+  preferred_language?: string;
   rating: number;
+  country: string;
   is_online: boolean;
   is_busy: boolean;
+  last_seen: string;
+  wait_time?: number;
+  is_available: boolean;
   favorited_at: string;
 }
 

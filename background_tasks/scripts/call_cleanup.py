@@ -10,11 +10,11 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-# Add the app directory to the Python path
+# Add the api directory to the Python path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from background_tasks.services.call_service import cleanup_expired_calls
-from app.clients.db import get_db_pool
+from api.clients.db import get_db_pool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

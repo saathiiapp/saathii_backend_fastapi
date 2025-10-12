@@ -23,13 +23,15 @@ Complete guide for integrating wallet management, coin operations, and financial
 // services/WalletService.ts
 import ApiService from './ApiService';
 
-export interface WalletBalance {
+export interface UserWalletBalance {
   user_id: number;
   balance_coins: number;
+}
+
+export interface ListenerWalletBalance {
+  user_id: number;
   withdrawable_money: number;
   total_earned: number;
-  total_withdrawn: number;
-  pending_withdrawals: number;
 }
 
 export interface AddCoinsRequest {
@@ -109,39 +111,44 @@ export interface BankDetailsResponse {
 }
 
 class WalletService {
-  // Get wallet balance
-  async getBalance(): Promise<WalletBalance> {
-    return ApiService.get<WalletBalance>('/wallet/balance');
+  // Get user wallet balance
+  async getBalance(): Promise<{ user_id: number; balance_coins: number }> {
+    return ApiService.get<{ user_id: number; balance_coins: number }>('/balance');
   }
 
   // Add coins to wallet
   async addCoins(data: AddCoinsRequest): Promise<AddCoinsResponse> {
-    return ApiService.post<AddCoinsResponse>('/wallet/add-coins', data);
+    return ApiService.post<AddCoinsResponse>('/add_coin', data);
   }
 
-  // Get call earnings
+  // Get listener balance (for listeners only)
+  async getListenerBalance(): Promise<{ user_id: number; withdrawable_money: number; total_earned: number }> {
+    return ApiService.get<{ user_id: number; withdrawable_money: number; total_earned: number }>('/listener/balance');
+  }
+
+  // Get listener earnings (for listeners only)
   async getEarnings(page: number = 1, perPage: number = 20): Promise<CallEarningsResponse> {
-    return ApiService.get<CallEarningsResponse>(`/wallet/earnings?page=${page}&per_page=${perPage}`);
+    return ApiService.get<CallEarningsResponse>(`/listener/earnings?page=${page}&per_page=${perPage}`);
   }
 
-  // Request withdrawal
+  // Request withdrawal (for listeners only)
   async requestWithdrawal(data: WithdrawalRequest): Promise<WithdrawalResponse> {
-    return ApiService.post<WithdrawalResponse>('/wallet/withdraw', data);
+    return ApiService.post<WithdrawalResponse>('/listener/withdraw', data);
   }
 
-  // Get withdrawal history
+  // Get withdrawal history (for listeners only)
   async getWithdrawalHistory(page: number = 1, perPage: number = 20): Promise<WithdrawalHistoryResponse> {
-    return ApiService.get<WithdrawalHistoryResponse>(`/wallet/withdrawals?page=${page}&per_page=${perPage}`);
+    return ApiService.get<WithdrawalHistoryResponse>(`/listener/withdrawals?page=${page}&per_page=${perPage}`);
   }
 
-  // Update bank details
+  // Update bank details (for listeners only)
   async updateBankDetails(data: BankDetailsUpdate): Promise<BankDetailsResponse> {
-    return ApiService.put<BankDetailsResponse>('/wallet/bank-details', data);
+    return ApiService.put<BankDetailsResponse>('/listener/bank-details', data);
   }
 
-  // Get bank details status
+  // Get bank details status (for listeners only)
   async getBankDetailsStatus(): Promise<BankDetailsResponse> {
-    return ApiService.get<BankDetailsResponse>('/wallet/bank-details');
+    return ApiService.get<BankDetailsResponse>('/listener/bank-details');
   }
 }
 
@@ -164,14 +171,16 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import WalletService, { WalletBalance } from '../services/WalletService';
+import WalletService, { UserWalletBalance, ListenerWalletBalance } from '../services/WalletService';
 import WalletCard from '../components/WalletCard';
 import TransactionList from '../components/TransactionList';
 
 const WalletDashboardScreen: React.FC = () => {
-  const [balance, setBalance] = useState<WalletBalance | null>(null);
+  const [userBalance, setUserBalance] = useState<UserWalletBalance | null>(null);
+  const [listenerBalance, setListenerBalance] = useState<ListenerWalletBalance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isListener, setIsListener] = useState(false);
 
   useEffect(() => {
     loadWalletData();
@@ -179,8 +188,13 @@ const WalletDashboardScreen: React.FC = () => {
 
   const loadWalletData = async () => {
     try {
-      const walletBalance = await WalletService.getBalance();
-      setBalance(walletBalance);
+      const [userWalletBalance, listenerWalletBalance] = await Promise.all([
+        WalletService.getBalance(),
+        WalletService.getListenerBalance().catch(() => null), // This will fail for non-listeners
+      ]);
+      setUserBalance(userWalletBalance);
+      setListenerBalance(listenerWalletBalance);
+      setIsListener(!!listenerWalletBalance);
     } catch (error) {
       console.error('Failed to load wallet data:', error);
     } finally {
@@ -214,7 +228,7 @@ const WalletDashboardScreen: React.FC = () => {
     );
   }
 
-  if (!balance) {
+  if (!userBalance) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Failed to load wallet data</Text>
@@ -232,38 +246,43 @@ const WalletDashboardScreen: React.FC = () => {
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <WalletCard balance={balance} />
+      <WalletCard 
+        userBalance={userBalance} 
+        listenerBalance={listenerBalance} 
+        isListener={isListener} 
+      />
       
       <View style={styles.actionsContainer}>
         <TouchableOpacity style={styles.actionButton} onPress={handleAddCoins}>
           <Text style={styles.actionButtonText}>Add Coins</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton} onPress={handleWithdraw}>
-          <Text style={styles.actionButtonText}>Withdraw</Text>
+        {isListener && (
+          <TouchableOpacity style={styles.actionButton} onPress={handleWithdraw}>
+            <Text style={styles.actionButtonText}>Withdraw</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {isListener && listenerBalance && (
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Total Earned</Text>
+            <Text style={styles.statValue}>₹{listenerBalance.total_earned.toFixed(2)}</Text>
+          </View>
+          
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Withdrawable</Text>
+            <Text style={styles.statValue}>₹{listenerBalance.withdrawable_money.toFixed(2)}</Text>
+          </View>
+        </View>
+      )}
+
+      {isListener && (
+        <TouchableOpacity style={styles.earningsButton} onPress={handleViewEarnings}>
+          <Text style={styles.earningsButtonText}>View Earnings History</Text>
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Total Earned</Text>
-          <Text style={styles.statValue}>₹{balance.total_earned.toFixed(2)}</Text>
-        </View>
-        
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Total Withdrawn</Text>
-          <Text style={styles.statValue}>₹{balance.total_withdrawn.toFixed(2)}</Text>
-        </View>
-        
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Pending</Text>
-          <Text style={styles.statValue}>₹{balance.pending_withdrawals.toFixed(2)}</Text>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.earningsButton} onPress={handleViewEarnings}>
-        <Text style={styles.earningsButtonText}>View Earnings History</Text>
-      </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
@@ -360,28 +379,35 @@ export default WalletDashboardScreen;
 // components/WalletCard.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { WalletBalance } from '../services/WalletService';
+import { UserWalletBalance, ListenerWalletBalance } from '../services/WalletService';
 
 interface WalletCardProps {
-  balance: WalletBalance;
+  userBalance: UserWalletBalance;
+  listenerBalance?: ListenerWalletBalance | null;
+  isListener: boolean;
 }
 
-const WalletCard: React.FC<WalletCardProps> = ({ balance }) => {
+const WalletCard: React.FC<WalletCardProps> = ({ userBalance, listenerBalance, isListener }) => {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.title}>Wallet Balance</Text>
-        <Text style={styles.coins}>{balance.balance_coins} coins</Text>
+        <Text style={styles.coins}>{userBalance.balance_coins} coins</Text>
       </View>
       
-      <View style={styles.balanceContainer}>
-        <Text style={styles.balanceLabel}>Withdrawable Amount</Text>
-        <Text style={styles.balanceAmount}>₹{balance.withdrawable_money.toFixed(2)}</Text>
-      </View>
+      {isListener && listenerBalance && (
+        <View style={styles.balanceContainer}>
+          <Text style={styles.balanceLabel}>Withdrawable Amount</Text>
+          <Text style={styles.balanceAmount}>₹{listenerBalance.withdrawable_money.toFixed(2)}</Text>
+        </View>
+      )}
       
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Available for withdrawal to bank account
+          {isListener 
+            ? 'Available for withdrawal to bank account' 
+            : 'Coins for making calls and other services'
+          }
         </Text>
       </View>
     </View>
@@ -710,11 +736,11 @@ const WithdrawalScreen: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [walletBalance, bankStatus] = await Promise.all([
-        WalletService.getBalance(),
+      const [listenerBalance, bankStatus] = await Promise.all([
+        WalletService.getListenerBalance(),
         WalletService.getBankDetailsStatus(),
       ]);
-      setBalance(walletBalance.withdrawable_money);
+      setBalance(listenerBalance.withdrawable_money);
       setBankDetails(bankStatus);
     } catch (error) {
       Alert.alert('Error', 'Failed to load wallet data');

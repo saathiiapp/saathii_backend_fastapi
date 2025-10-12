@@ -9,11 +9,11 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-# Add the app directory to the Python path
+# Add the api directory to the Python path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from background_tasks.services.presence_service import mark_inactive_users_offline, cleanup_expired_busy_status
-from app.clients.db import get_db_pool
+from api.clients.db import get_db_pool
 
 async def main():
     """Main function to cleanup presence data"""

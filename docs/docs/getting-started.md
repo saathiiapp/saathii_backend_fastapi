@@ -73,7 +73,7 @@ S3_BUCKET_NAME="your-s3-bucket-name"
 ### 4. Run the Server
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 5. Access the API
@@ -136,32 +136,20 @@ If you need file upload functionality:
 - `GET /feed/stats` - Get feed statistics
 
 ### 💰 Wallets
-- `GET /wallet/balance` - Get wallet balance and coins
-- `POST /wallet/add-coins` - Add coins to wallet
-- `GET /wallet/earnings` - Get call earnings
-- `POST /wallet/withdraw` - Request withdrawal
-- `GET /wallet/withdrawals` - Get withdrawal history
-- `PUT /wallet/bank-details` - Update bank details
-- `GET /wallet/bank-details` - Get bank details status
-
-### 📊 Transactions
-- `GET /transactions/user` - Get user transaction history
-- `GET /transactions/listener` - Get listener transaction history
+- `GET /balance` - Get user wallet balance
+- `POST /add_coin` - Add coins to wallet
+- `GET /listener/balance` - Get listener withdrawable money
+- `GET /listener/earnings` - Get listener earnings history
+- `POST /listener/withdraw` - Request withdrawal
+- `GET /listener/withdrawals` - Get withdrawal history
+- `PUT /listener/bank-details` - Update bank details
+- `GET /listener/bank-details` - Get bank details status
 
 ### 📞 Calls
 - `POST /calls/start` - Start a new call
 - `POST /calls/end` - End an ongoing call
 - `GET /calls/ongoing` - Get ongoing call details
 - `GET /calls/history` - Get call history
-- `GET /calls/history/summary` - Get call history summary
-- `GET /calls/balance` - Get coin balance
-- `POST /calls/emergency-end/{call_id}` - Emergency end call
-- `POST /calls/recharge` - Recharge coins
-- `GET /calls/recharge/history` - Get recharge history
-- `POST /calls/bill-minute/{call_id}` - Bill call minute
-- `POST /calls/cleanup` - Cleanup calls
-- `GET /calls/status` - Get call system status
-- `GET /calls/rates` - Get call rates
 
 ### ⭐ Favorites
 - `POST /favorites/add` - Add favorite listener

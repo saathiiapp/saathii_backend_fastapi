@@ -137,15 +137,15 @@ Complete user registration with profile information.
 **Required Fields:**
 - `registration_token` - Token from OTP verification
 - `username` - Unique username
-- `sex` - "male", "female", or "other"
-- `dob` - Date of birth (YYYY-MM-DD)
-- `role` - "listener" or "user"
 
 **Optional Fields:**
+- `sex` - "male" or "female"
+- `dob` - Date of birth (YYYY-MM-DD)
 - `bio` - User biography
 - `interests` - Array of interest tags
 - `profile_image_url` - Profile image URL
 - `preferred_language` - Language preference (default: "en")
+- `role` - "listener" or "user"
 
 **Response:**
 ```json

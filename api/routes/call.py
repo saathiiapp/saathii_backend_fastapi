@@ -98,7 +98,7 @@ async def start_call(data: StartCallRequest, user=Depends(get_current_user_async
         current_balance = await get_user_coin_balance(user_id)
         
         # Get rate per minute
-        rate_per_minute = DEFAULT_CALL_RATES[data.call_type].rate_per_minute
+        rate_per_minute = DEFAULT_CALL_RATES[data.call_type]["rate_per_minute"]
         
         if current_balance < rate_per_minute:
             raise HTTPException(
@@ -167,77 +167,32 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
         if not call:
             raise HTTPException(status_code=404, detail="Call not found or already ended")
         
-        # Calculate final duration and cost
+        # Calculate final duration
         start_time = call['start_time']
         end_time = datetime.utcnow()
         duration_seconds = int((end_time - start_time).total_seconds())
         duration_minutes = max(1, duration_seconds // 60)  # Minimum 1 minute
         
-        # Calculate total cost (per-minute charging)
-        call_type = CallType(call['call_type'])
-        rate_per_minute = DEFAULT_CALL_RATES[call_type].rate_per_minute
-        total_cost = duration_minutes * rate_per_minute
-        additional_cost = total_cost - call['coins_spent']
+        # With per-minute deduction, coins are already deducted every minute
+        # So we just use the current coins_spent value
+        total_coins_spent = call['coins_spent']
         
-        # Check if user has enough coins for additional cost
-        if additional_cost > 0:
-            current_balance = await get_user_coin_balance(user_id)
-            if current_balance < additional_cost:
-                # Handle coin empty scenario - calculate listener earnings first
-                call_type = CallType(call['call_type'])
-                listener_rupees_per_minute = await get_listener_earning_rate(call['listener_id'], call_type.value)
-                listener_earnings = int(listener_rupees_per_minute * duration_minutes)
-                
-                # Update call record with correct coins_spent and listener_money_earned
-                await conn.execute(
-                    """
-                    UPDATE user_calls 
-                    SET end_time = $1, duration_seconds = $2, duration_minutes = $3,
-                        coins_spent = $4, listener_money_earned = $5,
-                        status = 'dropped', updated_at = now()
-                    WHERE call_id = $6
-                    """,
-                    end_time, duration_seconds, duration_minutes, total_cost, 
-                    listener_earnings, data.call_id
-                )
-                
-                # Add earnings to listener
-                await update_user_coin_balance(call['listener_id'], listener_earnings, "add", "earn")
-                
-                # Set both users as not busy
-                await update_both_users_presence(call['user_id'], call['listener_id'], False)
-                
-                # Remove from Redis
-                await redis_client.delete(f"call:{data.call_id}")
-                
-                return EndCallResponse(
-                    call_id=data.call_id,
-                    message="Call ended due to insufficient coins",
-                    duration_seconds=duration_seconds,
-                    duration_minutes=duration_minutes,
-                    coins_spent=total_cost,
-                    listener_money_earned=listener_earnings,
-                    status=CallStatus.DROPPED
-                )
-            
-            # Deduct additional cost
-            await update_user_coin_balance(user_id, additional_cost, "subtract", "spend")
-        
-        # Calculate listener earnings in rupees per minute
+        # Calculate listener earnings based on actual duration and coins spent
         call_type = CallType(call['call_type'])
+        rate_per_minute = DEFAULT_CALL_RATES[call_type]["rate_per_minute"]
+        actual_duration_paid = total_coins_spent // rate_per_minute
         listener_rupees_per_minute = await get_listener_earning_rate(call['listener_id'], call_type.value)
-        listener_earnings = int(listener_rupees_per_minute * duration_minutes)
+        listener_earnings = int(listener_rupees_per_minute * actual_duration_paid)
         
         # Update call record
         await conn.execute(
             """
             UPDATE user_calls 
             SET end_time = $1, duration_seconds = $2, duration_minutes = $3,
-                coins_spent = $4, listener_money_earned = $5,
-                status = $6, updated_at = now()
-            WHERE call_id = $7
+                listener_money_earned = $4, status = $5, updated_at = now()
+            WHERE call_id = $6
             """,
-            end_time, duration_seconds, duration_minutes, total_cost, 
+            end_time, duration_seconds, duration_minutes, 
             listener_earnings, data.reason or "completed", data.call_id
         )
         
@@ -255,7 +210,7 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
             message="Call ended successfully",
             duration_seconds=duration_seconds,
             duration_minutes=duration_minutes,
-            coins_spent=total_cost,
+            coins_spent=total_coins_spent,
             listener_money_earned=listener_earnings,
             status=CallStatus.COMPLETED if data.reason != "dropped" else CallStatus.DROPPED
         )
@@ -479,3 +434,4 @@ async def set_user_busy_status(user_id: int, is_busy: bool, wait_time: int = Non
             # Broadcast to all connected clients
             await broadcast_user_status_update(user_id, status_data)
             print(f"📞 User {user_id} status updated: busy={is_busy}, broadcasted to all clients")
+

@@ -2,7 +2,7 @@ import json
 import asyncio
 from typing import Dict, List, Set
 from fastapi import WebSocket, WebSocketDisconnect
-from app.clients.redis_client import redis_client
+from api.clients.redis_client import redis_client
 import logging
 
 logger = logging.getLogger(__name__)

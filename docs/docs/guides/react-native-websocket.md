@@ -80,7 +80,7 @@ class WebSocketService extends EventEmitter {
     this.isConnecting = true;
 
     try {
-      const wsUrl = `wss://your-api-domain.com/ws?token=${token}`;
+      const wsUrl = `ws://localhost:8000/ws/feed?token=${token}`;
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {

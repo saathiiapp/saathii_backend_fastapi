@@ -35,6 +35,9 @@ cat >> "$TEMP_CRON" << EOF
 # Call cleanup - runs every 10 minutes
 */10 * * * * cd $PROJECT_DIR && python3 background_tasks/scripts/call_cleanup.py >> /var/log/saathii/call_cleanup.log 2>&1
 
+# Coin deduction - runs every minute for ongoing calls
+* * * * * cd $PROJECT_DIR && python3 background_tasks/scripts/coin_deduction.py >> /var/log/saathii/coin_deduction.log 2>&1
+
 # Log rotation - runs daily at 1:00 AM
 0 1 * * * find /var/log/saathii -name "*.log" -mtime +7 -delete
 EOF
@@ -56,15 +59,19 @@ echo "🧪 Testing script execution..."
 # Test badge assignment script
 echo "Testing badge assignment script..."
 cd "$PROJECT_DIR"
-python3 scripts/badge_assignment.py --help 2>/dev/null || echo "Badge assignment script ready"
+python3 background_tasks/scripts/badge_assignment.py --help 2>/dev/null || echo "Badge assignment script ready"
 
 # Test presence cleanup script
 echo "Testing presence cleanup script..."
-python3 scripts/presence_cleanup.py --help 2>/dev/null || echo "Presence cleanup script ready"
+python3 background_tasks/scripts/presence_cleanup.py --help 2>/dev/null || echo "Presence cleanup script ready"
 
 # Test call cleanup script
 echo "Testing call cleanup script..."
-python3 scripts/call_cleanup.py --help 2>/dev/null || echo "Call cleanup script ready"
+python3 background_tasks/scripts/call_cleanup.py --help 2>/dev/null || echo "Call cleanup script ready"
+
+# Test coin deduction script
+echo "Testing coin deduction script..."
+python3 background_tasks/scripts/coin_deduction.py --help 2>/dev/null || echo "Coin deduction script ready"
 
 echo "✅ All scripts tested successfully!"
 
@@ -85,6 +92,7 @@ echo "📊 To view logs:"
 echo "  tail -f /var/log/saathii/badge_assignment.log"
 echo "  tail -f /var/log/saathii/presence_cleanup.log"
 echo "  tail -f /var/log/saathii/call_cleanup.log"
+echo "  tail -f /var/log/saathii/coin_deduction.log"
 echo ""
 echo "🔧 To remove scheduled tasks:"
 echo "  crontab -e  # Then remove Saathii entries"

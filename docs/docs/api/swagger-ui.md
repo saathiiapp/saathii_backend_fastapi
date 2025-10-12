@@ -82,8 +82,6 @@ To use the interactive API explorer:
 - `GET /wallet/bank-details` - Get bank details status
 
 ### 📊 Transactions
-- `GET /transactions/user` - Get user transaction history
-- `GET /transactions/listener` - Get listener transaction history
 
 ### 📞 Calls
 - `POST /calls/start` - Start a new call

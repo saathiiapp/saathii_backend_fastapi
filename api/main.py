@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from app.routes import auth, user, websocket, call, wallet
-from app.clients.websocket_manager import manager
+from api.routes import auth, user, websocket, call, wallet
+from api.clients.websocket_manager import manager
 # Scheduler removed - using external cron jobs instead
 import asyncio
 

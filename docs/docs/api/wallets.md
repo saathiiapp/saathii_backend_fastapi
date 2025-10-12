@@ -32,27 +32,19 @@ Authorization: Bearer <access_token>
 ```json
 {
   "user_id": 123,
-  "balance_coins": 500,
-  "withdrawable_money": 250.50,
-  "total_earned": 1000.00,
-  "total_withdrawn": 200.00,
-  "pending_withdrawals": 50.00
+  "balance_coins": 500
 }
 ```
 
 **Fields:**
 - `user_id`: User identifier
 - `balance_coins`: Current coin balance
-- `withdrawable_money`: Money available for withdrawal
-- `total_earned`: Total money earned from calls
-- `total_withdrawn`: Total money withdrawn
-- `pending_withdrawals`: Pending withdrawal requests
 
 ### Add Coins to Wallet
 
 Add coins to the user's wallet with transaction tracking.
 
-**Endpoint:** `POST /wallet/add-coins`
+**Endpoint:** `POST /add_coin`
 
 **Headers:**
 ```
@@ -82,7 +74,6 @@ Content-Type: application/json
 {
   "transaction_id": 123,
   "coins_added": 100,
-  "money_amount": 50.00,
   "new_balance": 600,
   "message": "Successfully added 100 coins to wallet (₹50.00)",
   "created_at": "2024-01-15T10:30:00Z"
@@ -94,40 +85,25 @@ Content-Type: application/json
 - **bonus**: Free bonus coins (no money involved)
 - **referral_bonus**: Referral reward coins
 
-### Get Call Earnings
+### Get Listener Balance
 
-Get listener's earnings from calls.
+Get listener's withdrawable money and total earnings.
 
-**Endpoint:** `GET /wallet/earnings`
+**Endpoint:** `GET /listener/balance`
 
 **Headers:**
 ```
 Authorization: Bearer <access_token>
 ```
 
-**Query Parameters:**
-- `page`: Page number (default: 1)
-- `per_page`: Items per page (default: 20, max: 100)
+**Note:** This endpoint requires listener role.
 
 **Response:**
 ```json
 {
-  "earnings": [
-    {
-      "call_id": 456,
-      "user_id": 123,
-      "coins_earned": 50,
-      "money_earned": 25.00,
-      "duration_minutes": 5,
-      "created_at": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "total_earnings": 1000.00,
-  "total_coins": 2000,
-  "page": 1,
-  "per_page": 20,
-  "has_next": false,
-  "has_previous": false
+  "user_id": 123,
+  "withdrawable_money": 250.50,
+  "total_earned": 1000.00
 }
 ```
 
@@ -135,7 +111,7 @@ Authorization: Bearer <access_token>
 
 Request withdrawal from wallet to bank account.
 
-**Endpoint:** `POST /wallet/withdraw`
+**Endpoint:** `POST /listener/withdraw`
 
 **Headers:**
 ```
@@ -163,11 +139,13 @@ Content-Type: application/json
 }
 ```
 
+**Note:** This endpoint requires listener role and bank details must be configured.
+
 ### Get Withdrawal History
 
 Get user's withdrawal history.
 
-**Endpoint:** `GET /wallet/withdrawals`
+**Endpoint:** `GET /listener/withdrawals`
 
 **Headers:**
 ```
@@ -202,7 +180,7 @@ Authorization: Bearer <access_token>
 
 Update bank account details for withdrawals.
 
-**Endpoint:** `PUT /wallet/bank-details`
+**Endpoint:** `PUT /listener/bank-details`
 
 **Headers:**
 ```
@@ -213,12 +191,10 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "payout_account": {
-    "account_holder_name": "John Doe",
-    "account_number": "1234567890",
-    "ifsc_code": "SBIN0001234",
-    "bank_name": "State Bank of India"
-  }
+  "account_holder_name": "John Doe",
+  "account_number": "1234567890",
+  "ifsc_code": "SBIN0001234",
+  "bank_name": "State Bank of India"
 }
 ```
 
@@ -234,7 +210,7 @@ Content-Type: application/json
 
 Check if user has bank details configured.
 
-**Endpoint:** `GET /wallet/bank-details`
+**Endpoint:** `GET /listener/bank-details`
 
 **Headers:**
 ```
@@ -288,7 +264,7 @@ Authorization: Bearer <access_token>
 ```typescript
 // Get wallet balance
 const getWalletBalance = async (token: string) => {
-  const response = await fetch('https://saathiiapp.com/wallet/balance', {
+  const response = await fetch('https://saathiiapp.com/balance', {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -299,7 +275,7 @@ const getWalletBalance = async (token: string) => {
 
 // Add coins to wallet
 const addCoins = async (token: string, coins: number, txType: string = 'purchase', moneyAmount: number = 0) => {
-  const response = await fetch('https://saathiiapp.com/wallet/add-coins', {
+  const response = await fetch('https://saathiiapp.com/add_coin', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -316,7 +292,7 @@ const addCoins = async (token: string, coins: number, txType: string = 'purchase
 
 // Request withdrawal
 const requestWithdrawal = async (token: string, amount: number) => {
-  const response = await fetch('https://saathiiapp.com/wallet/withdraw', {
+  const response = await fetch('https://saathiiapp.com/listener/withdraw', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -332,13 +308,13 @@ const requestWithdrawal = async (token: string, amount: number) => {
 
 **Get Wallet Balance:**
 ```bash
-curl -X GET 'https://saathiiapp.com/wallet/balance' \
+curl -X GET 'https://saathiiapp.com/balance' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Add Coins:**
 ```bash
-curl -X POST 'https://saathiiapp.com/wallet/add-coins' \
+curl -X POST 'https://saathiiapp.com/add_coin' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -350,7 +326,7 @@ curl -X POST 'https://saathiiapp.com/wallet/add-coins' \
 
 **Request Withdrawal:**
 ```bash
-curl -X POST 'https://saathiiapp.com/wallet/withdraw' \
+curl -X POST 'https://saathiiapp.com/listener/withdraw' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -383,6 +359,6 @@ curl -X POST 'https://saathiiapp.com/wallet/withdraw' \
 
 ## Next Steps
 
-- Learn about [Transactions API](./transactions) for detailed transaction history
+- Learn about [Call Management API](./call-management) for call-related transactions
 - Explore [Call Management API](./call-management) for call operations
 - Check out [User Management API](./user-management) for profile management

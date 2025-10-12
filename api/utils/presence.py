@@ -3,7 +3,7 @@ Presence and status management utilities
 """
 import asyncio
 from datetime import datetime, timedelta
-from app.clients.db import get_db_pool
+from api.clients.db import get_db_pool
 
 
 async def mark_inactive_users_offline(inactive_minutes: int = 5):

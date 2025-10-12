@@ -42,9 +42,7 @@ Authorization: Bearer <access_token>
   "preferred_language": "en",
   "rating": 4.8,
   "country": "US",
-  "roles": ["listener"],
-  "created_at": "2024-01-15T10:30:00Z",
-  "updated_at": "2024-01-15T10:30:00Z"
+  "roles": ["listener"]
 }
 ```
 
@@ -52,7 +50,7 @@ Authorization: Bearer <access_token>
 - `user_id`: Unique user identifier
 - `phone`: User's phone number
 - `username`: Unique username
-- `sex`: Gender ("male", "female", "other")
+- `sex`: Gender ("male", "female")
 - `dob`: Date of birth (YYYY-MM-DD)
 - `bio`: User biography/description
 - `interests`: Array of interest tags
@@ -61,8 +59,6 @@ Authorization: Bearer <access_token>
 - `rating`: User rating (0.0-5.0)
 - `country`: Country code
 - `roles`: Array of user roles
-- `created_at`: Account creation timestamp
-- `updated_at`: Last update timestamp
 
 ### Update Current User
 
@@ -121,9 +117,7 @@ Content-Type: application/json
   "preferred_language": "en",
   "rating": 4.9,
   "country": "CA",
-  "roles": ["listener"],
-  "created_at": "2024-01-15T10:30:00Z",
-  "updated_at": "2024-01-15T14:45:00Z"
+  "roles": ["listener"]
 }
 ```
 

@@ -56,22 +56,20 @@ Content-Type: application/json
 ```json
 {
   "listener_id": 123,
-  "call_type": "audio",
-  "estimated_duration_minutes": 30
+  "call_type": "audio"
 }
 ```
 
 **Fields:**
 - `listener_id`: ID of the listener to call
 - `call_type`: "audio" or "video"
-- `estimated_duration_minutes`: Estimated call duration (optional)
 
 **Response:**
 ```json
 {
   "call_id": 456,
   "message": "Call started successfully",
-  "estimated_cost": 300,
+  "call_duration": 30,
   "remaining_coins": 700,
   "call_type": "audio",
   "listener_id": 123,
@@ -82,7 +80,7 @@ Content-Type: application/json
 **Behavior:**
 - Validates user and listener availability
 - Calculates maximum possible duration based on available coins
-- Reserves minimum charge (10 coins for audio, 50 for video)
+- Reserves minimum charge (10 coins for audio, 60 for video)
 - **Auto-updates both users' presence status to busy**
 - **Broadcasts status changes to all connected clients**
 - Creates call record in database
@@ -584,12 +582,12 @@ sequenceDiagram
 **Audio Calls:**
 - Rate: 10 coins per minute
 - Minimum charge: 10 coins
-- Listener earnings: ₹1 per minute
+- Listener earnings: Variable based on badge (₹1-1.8 per minute)
 
 **Video Calls:**
 - Rate: 60 coins per minute  
 - Minimum charge: 60 coins
-- Listener earnings: ₹6 per minute
+- Listener earnings: Variable based on badge (₹6-10 per minute)
 
 ### Billing Process
 
@@ -780,6 +778,59 @@ curl -X POST 'https://saathiiapp.com/calls/recharge' \
 2. **Status Broadcasting**: Broadcast status changes to all clients
 3. **Connection Management**: Handle WebSocket disconnections
 4. **Error Recovery**: Implement retry logic for failed operations
+
+## Per-Minute Coin Deduction
+
+### Background Task: Automatic Coin Deduction
+
+Coins are automatically deducted every minute for all ongoing calls using a background task. This ensures fair billing without requiring external system integration.
+
+**How it works:**
+- Background service runs every minute via cron job
+- Automatically processes all ongoing calls
+- Deducts `rate_per_minute` for each active call
+- Ends calls when users have insufficient coins
+- Handles listener earnings and call settlement
+
+**Configuration:**
+- **Schedule**: Every minute (`* * * * *`)
+- **Script**: `background_tasks/scripts/coin_deduction.py`
+- **Logs**: `/var/log/saathii/coin_deduction.log`
+
+**Benefits:**
+- ✅ **Reliable**: No external dependencies
+- ✅ **Scalable**: Handles thousands of calls efficiently
+- ✅ **Automatic**: No manual intervention required
+- ✅ **Fair Billing**: Precise per-minute charging
+- ✅ **Error Handling**: Robust error recovery
+
+**Setup:**
+```bash
+# Run the setup script to configure cron jobs
+./background_tasks/scripts/setup_cron.sh
+```
+
+**Monitoring:**
+```bash
+# View real-time logs
+tail -f /var/log/saathii/coin_deduction.log
+
+# Check cron job status
+crontab -l | grep coin_deduction
+```
+
+**Integration Notes:**
+- This endpoint should be called every minute during active calls
+- It automatically handles call termination when users run out of coins
+- It updates both database and Redis cache
+- It broadcasts presence changes via WebSocket
+- It calculates fair listener earnings based on actual payment
+
+**Error Handling:**
+- Returns detailed error information for each call
+- Continues processing other calls even if one fails
+- Automatically ends calls when users have insufficient coins
+- Maintains data consistency through database transactions
 
 ## Next Steps
 

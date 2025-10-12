@@ -26,13 +26,12 @@ import ApiService from './ApiService';
 export interface StartCallRequest {
   listener_id: number;
   call_type: 'audio' | 'video';
-  estimated_duration_minutes?: number;
 }
 
 export interface StartCallResponse {
   call_id: number;
   message: string;
-  estimated_cost: number;
+  call_duration: number;
   remaining_coins: number;
   call_type: string;
   listener_id: number;
@@ -169,40 +168,6 @@ class CallService {
     return ApiService.get<CallHistoryResponse>(`/calls/history?page=${page}&per_page=${perPage}`);
   }
 
-  // Get call history summary
-  async getCallHistorySummary(): Promise<CallSummary> {
-    return ApiService.get<CallSummary>('/calls/history/summary');
-  }
-
-  // Get coin balance
-  async getCoinBalance(): Promise<CoinBalance> {
-    return ApiService.get<CoinBalance>('/calls/balance');
-  }
-
-  // Emergency end call
-  async emergencyEndCall(callId: number): Promise<EndCallResponse> {
-    return ApiService.post<EndCallResponse>(`/calls/emergency-end/${callId}`);
-  }
-
-  // Recharge coins
-  async rechargeCoins(data: RechargeRequest): Promise<RechargeResponse> {
-    return ApiService.post<RechargeResponse>('/calls/recharge', data);
-  }
-
-  // Get recharge history
-  async getRechargeHistory(page: number = 1, perPage: number = 20): Promise<RechargeHistoryResponse> {
-    return ApiService.get<RechargeHistoryResponse>(`/calls/recharge/history?page=${page}&per_page=${perPage}`);
-  }
-
-  // Bill call minute
-  async billCallMinute(callId: number): Promise<{ call_id: number; coins_deducted: number; remaining_coins: number; message: string }> {
-    return ApiService.post(`/calls/bill-minute/${callId}`);
-  }
-
-  // Get call rates
-  async getCallRates(): Promise<CallRates> {
-    return ApiService.get<CallRates>('/calls/rates');
-  }
 }
 
 export default new CallService();

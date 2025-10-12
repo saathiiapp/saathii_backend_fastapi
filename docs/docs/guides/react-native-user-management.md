@@ -47,7 +47,6 @@ export interface EditUserRequest {
   interests?: string[];
   profile_image_url?: string;
   preferred_language?: string;
-  country?: string;
 }
 
 export interface UserStatus {
@@ -103,16 +102,6 @@ class UserService {
     return ApiService.post<{ message: string }>('/users/me/heartbeat');
   }
 
-  // Get user presence
-  async getUserPresence(userId: number): Promise<UserPresence> {
-    return ApiService.get<UserPresence>(`/users/${userId}/presence`);
-  }
-
-  // Get multiple users presence
-  async getMultipleUsersPresence(userIds: number[]): Promise<UserPresence[]> {
-    const userIdsString = userIds.join(',');
-    return ApiService.get<UserPresence[]>(`/users/presence?user_ids=${userIdsString}`);
-  }
 
   // Admin: Cleanup presence
   async cleanupPresence(): Promise<{ message: string }> {

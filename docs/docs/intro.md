@@ -10,15 +10,15 @@ Welcome to the comprehensive documentation for the Saathii Backend API - a scala
 
 The Saathii Backend API is a powerful, production-ready backend service that provides:
 
-- **OTP-based Authentication** with phone number verification
-- **JWT Token Management** with refresh token rotation
-- **User Profile Management** with comprehensive user data
-- **Real-time Presence Tracking** with WebSocket support
-- **Feed System** for discovering listeners with real-time updates
-- **Listener Verification System** with audio sample uploads
-- **Call Management** with coin-based billing system
-- **Wallet & Earnings** system for listeners
-- **Favorites & Blocking** functionality
+- **OTP-based Authentication** with phone number verification and JWT token management
+- **User Profile Management** with comprehensive user data and role-based access
+- **Real-time Presence Tracking** with WebSocket support and heartbeat system
+- **Feed System** for discovering listeners with advanced filtering and real-time updates
+- **Listener Verification System** with audio sample uploads and admin review
+- **Call Management** with coin-based billing system and per-minute charging
+- **Wallet & Earnings** system for listeners with withdrawal management
+- **Favorites & Blocking** functionality for user management
+- **Background Tasks** for automated coin deduction, presence cleanup, call management, and badge assignment with comprehensive monitoring and maintenance tools
 
 ## Quick Start
 

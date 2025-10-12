@@ -25,7 +25,6 @@ const sidebars: SidebarsConfig = {
         'api/presence-status',
         'api/feeds',
         'api/wallets',
-        'api/transactions',
         'api/call-management',
         'api/favorites',
         'api/blocking',
@@ -33,6 +32,16 @@ const sidebars: SidebarsConfig = {
         'api/websocket-realtime',
         'api/database-impact',
         'api/swagger-ui',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Background Tasks',
+      items: [
+        'background_tasks/index',
+        'background_tasks/background-tasks',
+        'background_tasks/background-tasks-api',
+        'background_tasks/background-tasks-summary',
       ],
     },
   ],
@@ -45,6 +54,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'guides/installation',
         'guides/s3-setup',
+        'guides/background-tasks-setup',
       ],
     },
     {

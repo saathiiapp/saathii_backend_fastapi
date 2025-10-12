@@ -395,21 +395,6 @@ This document explains what happens in the database for each API endpoint, which
 
 ---
 
-## 📊 Transaction APIs
-
-### `GET /transactions/user`
-**Database Impact:** READ
-- **Tables:** `user_transactions`, `user_wallets`
-- **Operations:**
-  - `SELECT ut.* FROM user_transactions ut JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id WHERE uw.user_id = $1 ORDER BY ut.created_at DESC`
-
-### `GET /transactions/listener`
-**Database Impact:** READ
-- **Tables:** `user_transactions`, `user_wallets`
-- **Operations:**
-  - `SELECT ut.* FROM user_transactions ut JOIN user_wallets uw ON ut.wallet_id = uw.wallet_id WHERE uw.user_id = $1 AND ut.tx_type = 'earn' ORDER BY ut.created_at DESC`
-
----
 
 ## 🔌 WebSocket APIs
 

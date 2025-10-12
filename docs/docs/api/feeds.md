@@ -1,25 +1,26 @@
 ---
-sidebar_position: 5
-title: Feeds API
-description: User discovery and feed system
+sidebar_position: 4
+title: Feed System API
+description: User discovery and feed management for finding listeners
 ---
 
-# Feeds API
+# Feed System API
 
-The Feeds API provides user discovery functionality and feed management for finding and connecting with listeners.
+The Feed System API provides comprehensive user discovery functionality, allowing users to find and connect with listeners based on various criteria including availability, interests, and preferences.
 
 ## Overview
 
-- **Listener Discovery**: Find and browse available listeners
-- **Feed Filtering**: Filter listeners by various criteria
-- **Feed Statistics**: Get insights about the feed system
-- **Real-time Updates**: WebSocket support for live feed updates
+- **User Discovery**: Find listeners based on multiple criteria
+- **Real-time Status**: Live availability and presence information
+- **Filtering Options**: Advanced filtering by interests, language, rating, and availability
+- **Pagination**: Efficient pagination for large result sets
+- **Statistics**: Real-time counts and statistics
 
 ## Endpoints
 
 ### Get Listeners Feed
 
-Get paginated list of listeners with filtering options.
+Get a paginated list of listeners with their details and real-time status.
 
 **Endpoint:** `GET /feed/listeners`
 
@@ -29,16 +30,21 @@ Authorization: Bearer <access_token>
 ```
 
 **Query Parameters:**
-- `page`: Page number (default: 1)
-- `per_page`: Items per page (default: 20, max: 100)
-- `online_only`: Show only online listeners (default: false)
-- `sex`: Filter by gender - "male", "female", "other" (optional)
-- `min_rating`: Minimum rating filter (default: 0.0)
-- `max_rating`: Maximum rating filter (default: 5.0)
-- `interests`: Comma-separated list of interests to filter by (optional)
-- `language`: Filter by preferred language (optional)
-- `sort_by`: Sort order - "rating", "online", "recent" (default: "rating")
-- `sort_order`: Sort direction - "asc", "desc" (default: "desc")
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `online_only` | boolean | Show only online users | false |
+| `available_only` | boolean | Show only available users (online and not busy) | false |
+| `language` | string | Filter by preferred language | null |
+| `interests` | string | Comma-separated interests to filter by | null |
+| `min_rating` | integer | Minimum rating filter | null |
+| `page` | integer | Page number (1-based) | 1 |
+| `per_page` | integer | Items per page (max 100) | 20 |
+
+**Example Request:**
+```
+GET /feed/listeners?online_only=true&interests=music,tech&page=1&per_page=10
+```
 
 **Response:**
 ```json
@@ -46,58 +52,52 @@ Authorization: Bearer <access_token>
   "listeners": [
     {
       "user_id": 123,
-      "username": "alice_listener",
+      "username": "jane_smith",
       "sex": "female",
       "bio": "Professional listener with 5 years experience...",
       "interests": ["music", "tech", "art"],
       "profile_image_url": "https://example.com/profile.jpg",
       "preferred_language": "en",
       "rating": 4.8,
+      "country": "US",
+      "roles": ["listener"],
       "is_online": true,
-      "is_busy": false,
       "last_seen": "2024-01-15T10:30:00Z",
-      "call_count": 150,
-      "avg_call_duration": 25.5
+      "is_busy": false,
+      "wait_time": null,
+      "is_available": true
     }
   ],
-  "filters": {
-    "online_only": false,
-    "sex": null,
-    "min_rating": 0.0,
-    "max_rating": 5.0,
-    "interests": [],
-    "language": null,
-    "sort_by": "rating",
-    "sort_order": "desc"
-  },
-  "pagination": {
-    "page": 1,
-    "per_page": 20,
-    "total": 150,
-    "has_next": true,
-    "has_previous": false
-  }
+  "total_count": 150,
+  "online_count": 45,
+  "available_count": 38,
+  "page": 1,
+  "per_page": 10,
+  "has_next": true,
+  "has_previous": false
 }
 ```
 
-**Fields:**
-- `user_id`: Listener's user ID
-- `username`: Listener's username
-- `sex`: Listener's gender
-- `bio`: Listener's biography
-- `interests`: Array of listener's interests
+**Field Descriptions:**
+- `user_id`: Unique user identifier
+- `username`: User's display name
+- `sex`: Gender ("male", "female")
+- `bio`: User biography/description
+- `interests`: Array of interest tags
 - `profile_image_url`: Profile image URL
 - `preferred_language`: Language preference
-- `rating`: Listener's rating (0.0-5.0)
+- `rating`: User rating (0.0-5.0)
+- `country`: Country code
+- `roles`: Array of user roles
 - `is_online`: Current online status
-- `is_busy`: Current busy status
-- `last_seen`: Last seen timestamp
-- `call_count`: Total number of calls
-- `avg_call_duration`: Average call duration in minutes
+- `last_seen`: Last activity timestamp
+- `is_busy`: Whether user is currently busy (in a call)
+- `wait_time`: Expected call duration in minutes (if on call)
+- `is_available`: True if online and not busy
 
 ### Get Feed Statistics
 
-Get statistics about the feed system and available listeners.
+Get real-time statistics about listeners in the feed.
 
 **Endpoint:** `GET /feed/stats`
 
@@ -111,117 +111,128 @@ Authorization: Bearer <access_token>
 {
   "total_listeners": 150,
   "online_listeners": 45,
-  "busy_listeners": 12,
-  "available_listeners": 33,
-  "average_rating": 4.2,
-  "top_interests": [
-    {
-      "interest": "music",
-      "count": 45
-    },
-    {
-      "interest": "tech",
-      "count": 38
-    },
-    {
-      "interest": "art",
-      "count": 32
-    }
-  ],
-  "gender_distribution": {
-    "female": 85,
-    "male": 60,
-    "other": 5
-  },
-  "language_distribution": {
-    "en": 120,
-    "es": 20,
-    "fr": 10
-  },
-  "last_updated": "2024-01-15T10:30:00Z"
+  "available_listeners": 38,
+  "busy_listeners": 7
 }
 ```
 
-**Fields:**
-- `total_listeners`: Total number of listeners
-- `online_listeners`: Number of online listeners
-- `busy_listeners`: Number of busy listeners
-- `available_listeners`: Number of available listeners
-- `average_rating`: Average rating across all listeners
-- `top_interests`: Most popular interests
-- `gender_distribution`: Distribution by gender
-- `language_distribution`: Distribution by language
-- `last_updated`: When statistics were last updated
+**Field Descriptions:**
+- `total_listeners`: Total number of listeners (excluding current user)
+- `online_listeners`: Number of currently online listeners
+- `available_listeners`: Number of available listeners (online and not busy)
+- `busy_listeners`: Number of busy listeners (online but in calls)
 
 ## Filtering Options
 
-### Gender Filter
-- **Values**: "male", "female", "other"
-- **Usage**: Filter listeners by gender
-- **Example**: `?sex=female`
+### Online Only Filter
 
-### Rating Filter
-- **Values**: 0.0 to 5.0
-- **Usage**: Filter by minimum and maximum rating
-- **Example**: `?min_rating=4.0&max_rating=5.0`
+Show only users who are currently online:
+```
+GET /feed/listeners?online_only=true
+```
 
-### Interests Filter
-- **Values**: Comma-separated list of interests
-- **Usage**: Filter listeners who have specific interests
-- **Example**: `?interests=music,tech`
+### Available Only Filter
+
+Show only users who are online and not busy (available for calls):
+```
+GET /feed/listeners?available_only=true
+```
 
 ### Language Filter
-- **Values**: Language codes (en, es, fr, etc.)
-- **Usage**: Filter by preferred language
-- **Example**: `?language=en`
 
-### Online Status Filter
-- **Values**: true/false
-- **Usage**: Show only online listeners
-- **Example**: `?online_only=true`
+Filter by preferred language:
+```
+GET /feed/listeners?language=en
+```
 
-### Sorting Options
-- **rating**: Sort by listener rating
-- **online**: Sort by online status
-- **recent**: Sort by last seen time
-- **Order**: "asc" or "desc"
+### Interests Filter
+
+Filter by interests (comma-separated):
+```
+GET /feed/listeners?interests=music,tech,art
+```
+
+### Rating Filter
+
+Filter by minimum rating:
+```
+GET /feed/listeners?min_rating=4
+```
+
+### Combined Filters
+
+Combine multiple filters:
+```
+GET /feed/listeners?online_only=true&interests=music&min_rating=4&page=1&per_page=20
+```
+
+## Sorting and Ordering
+
+The feed is automatically sorted by:
+1. **Online Status**: Online users appear first
+2. **Availability**: Available users (not busy) appear before busy users
+3. **Rating**: Higher rated users appear first
+4. **Recent Activity**: More recently active users appear first
+
+## Real-time Updates
+
+### WebSocket Integration
+
+Feed updates are broadcast in real-time via WebSocket:
+
+**Connection:**
+```
+wss://your-api-domain.com/ws/feed?token=<access_token>
+```
+
+**Message Types:**
+- `user_status_update` - User presence changed
+- `listener_online` - Listener came online
+- `listener_offline` - Listener went offline
+- `listener_busy` - Listener became busy
+- `listener_available` - Listener became available
+
+**Example Message:**
+```json
+{
+  "type": "user_status_update",
+  "user_id": 123,
+  "status": {
+    "user_id": 123,
+    "username": "jane_smith",
+    "profile_image_url": "https://example.com/profile.jpg",
+    "is_online": true,
+    "last_seen": "2024-01-15T10:30:00Z",
+    "is_busy": false,
+    "wait_time": null,
+    "is_available": true
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
 
 ## Error Handling
 
 ### Common Error Responses
 
-**Invalid Page (400):**
+**Invalid Parameters (400):**
 ```json
 {
-  "detail": "Page must be a positive integer"
+  "detail": "Invalid user IDs format"
 }
 ```
 
-**Invalid Per Page (400):**
+**Too Many Users (400):**
 ```json
 {
-  "detail": "Per page must be between 1 and 100"
+  "detail": "Too many user IDs requested"
 }
 ```
 
-**Invalid Gender (400):**
+**Unauthorized (401):**
 ```json
 {
-  "detail": "Invalid gender. Must be 'male', 'female', or 'other'"
-}
-```
-
-**Invalid Rating (400):**
-```json
-{
-  "detail": "Rating must be between 0.0 and 5.0"
-}
-```
-
-**Invalid Sort (400):**
-```json
-{
-  "detail": "Invalid sort option. Must be 'rating', 'online', or 'recent'"
+  "detail": "Invalid or expired token"
 }
 ```
 
@@ -230,54 +241,151 @@ Authorization: Bearer <access_token>
 ### React Native Integration
 
 ```typescript
-// Get listeners feed
-const getListenersFeed = async (token: string, filters: any = {}) => {
-  const params = new URLSearchParams({
-    page: filters.page?.toString() || '1',
-    per_page: filters.per_page?.toString() || '20',
-    online_only: filters.online_only?.toString() || 'false',
-    sort_by: filters.sort_by || 'rating',
-    sort_order: filters.sort_order || 'desc'
-  });
-  
-  if (filters.sex) params.append('sex', filters.sex);
-  if (filters.min_rating) params.append('min_rating', filters.min_rating.toString());
-  if (filters.max_rating) params.append('max_rating', filters.max_rating.toString());
-  if (filters.interests) params.append('interests', filters.interests.join(','));
-  if (filters.language) params.append('language', filters.language);
-  
-  const response = await fetch(`https://saathiiapp.com/feed/listeners?${params}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-  return response.json();
-};
+// services/FeedService.ts
+import ApiService from './ApiService';
 
-// Get feed statistics
-const getFeedStats = async (token: string) => {
-  const response = await fetch('https://saathiiapp.com/feed/stats', {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+export interface ListenerFeedItem {
+  user_id: number;
+  username: string;
+  sex: string;
+  bio: string;
+  interests: string[];
+  profile_image_url: string;
+  preferred_language: string;
+  rating: number;
+  country: string;
+  roles: string[];
+  is_online: boolean;
+  last_seen: string;
+  is_busy: boolean;
+  wait_time: number | null;
+  is_available: boolean;
+}
+
+export interface FeedResponse {
+  listeners: ListenerFeedItem[];
+  total_count: number;
+  online_count: number;
+  available_count: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface FeedStats {
+  total_listeners: number;
+  online_listeners: number;
+  available_listeners: number;
+  busy_listeners: number;
+}
+
+class FeedService {
+  // Get listeners feed
+  async getListenersFeed(filters: {
+    online_only?: boolean;
+    available_only?: boolean;
+    language?: string;
+    interests?: string;
+    min_rating?: number;
+    page?: number;
+    per_page?: number;
+  } = {}): Promise<FeedResponse> {
+    const params = new URLSearchParams();
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, value.toString());
+      }
+    });
+
+    return ApiService.get<FeedResponse>(`/feed/listeners?${params.toString()}`);
+  }
+
+  // Get feed statistics
+  async getFeedStats(): Promise<FeedStats> {
+    return ApiService.get<FeedStats>('/feed/stats');
+  }
+}
+
+export default new FeedService();
+```
+
+### JavaScript/WebSocket Integration
+
+```javascript
+class FeedWebSocketManager {
+  constructor(token) {
+    this.token = token;
+    this.ws = null;
+    this.listeners = new Map();
+  }
+
+  connect() {
+    const wsUrl = `wss://your-api-domain.com/ws/feed?token=${this.token}`;
+    this.ws = new WebSocket(wsUrl);
+
+    this.ws.onopen = () => {
+      console.log('Feed WebSocket connected');
+    };
+
+    this.ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      this.handleMessage(message);
+    };
+
+    this.ws.onclose = () => {
+      console.log('Feed WebSocket disconnected');
+      // Implement reconnection logic
+    };
+  }
+
+  handleMessage(message) {
+    switch (message.type) {
+      case 'user_status_update':
+        this.updateListenerStatus(message.user_id, message.status);
+        break;
+      case 'listener_online':
+        this.addListener(message.data);
+        break;
+      case 'listener_offline':
+        this.removeListener(message.data.user_id);
+        break;
+      default:
+        console.log('Unknown message type:', message.type);
     }
-  });
-  return response.json();
-};
+  }
+
+  updateListenerStatus(userId, status) {
+    // Update listener status in your app state
+    this.listeners.set(userId, status);
+    // Trigger UI update
+    this.onStatusUpdate?.(userId, status);
+  }
+
+  addListener(listener) {
+    this.listeners.set(listener.user_id, listener);
+    this.onListenerAdded?.(listener);
+  }
+
+  removeListener(userId) {
+    this.listeners.delete(userId);
+    this.onListenerRemoved?.(userId);
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+    }
+  }
+}
 ```
 
 ### cURL Examples
 
 **Get Listeners Feed:**
 ```bash
-curl -X GET 'https://saathiiapp.com/feed/listeners?page=1&per_page=20&online_only=true' \
-  -H 'Authorization: Bearer <access_token>'
-```
-
-**Get Feed with Filters:**
-```bash
-curl -X GET 'https://saathiiapp.com/feed/listeners?sex=female&min_rating=4.0&interests=music,tech' \
+curl -X GET 'https://saathiiapp.com/feed/listeners?online_only=true&interests=music,tech&page=1&per_page=10' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
@@ -287,54 +395,32 @@ curl -X GET 'https://saathiiapp.com/feed/stats' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
-## WebSocket Integration
-
-### Real-time Feed Updates
-
-Connect to the WebSocket endpoint for real-time feed updates:
-
-```javascript
-const ws = new WebSocket('wss://saathiiapp.com/ws/feed?token=<access_token>');
-
-ws.onopen = () => {
-  console.log('Connected to feed updates');
-};
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.type === 'listener_online') {
-    // Handle listener coming online
-  } else if (data.type === 'listener_offline') {
-    // Handle listener going offline
-  }
-};
-```
-
 ## Best Practices
 
-### Feed Management
+### Performance Optimization
 
-1. **Pagination**: Always use pagination for large feeds
-2. **Filtering**: Use appropriate filters to reduce data load
+1. **Pagination**: Always use pagination to limit result sets
+2. **Filtering**: Use appropriate filters to reduce data transfer
 3. **Caching**: Cache feed data locally for better performance
-4. **Real-time Updates**: Use WebSocket for live updates
+4. **Real-time Updates**: Use WebSocket for live updates instead of polling
 
 ### User Experience
 
-1. **Loading States**: Show loading indicators during data fetch
-2. **Empty States**: Handle empty feeds gracefully
-3. **Filter UI**: Provide intuitive filter controls
-4. **Refresh**: Implement pull-to-refresh functionality
+1. **Loading States**: Show loading indicators during feed requests
+2. **Error Handling**: Implement proper error handling and retry logic
+3. **Refresh**: Provide pull-to-refresh functionality
+4. **Infinite Scroll**: Implement infinite scroll for better UX
 
-### Performance
+### Real-time Updates
 
-1. **Lazy Loading**: Load more items as needed
-2. **Image Optimization**: Optimize profile images
-3. **Data Caching**: Cache frequently accessed data
-4. **Efficient Filtering**: Use server-side filtering
+1. **WebSocket Connection**: Maintain persistent WebSocket connection
+2. **Status Updates**: Update UI immediately when user status changes
+3. **Connection Management**: Handle disconnections and reconnections gracefully
+4. **Message Filtering**: Only process relevant message types
 
 ## Next Steps
 
-- Learn about [Favorites API](./favorites) for managing favorite users
-- Explore [Call Management API](./call-management) for call operations
-- Check out [User Management API](./user-management) for profile management
+- Learn about [Favorites API](./favorites) for managing favorite listeners
+- Explore [Blocking API](./blocking) for user blocking functionality
+- Check out [Call Management API](./call-management) for making calls
+- Access the [WebSocket Integration](./websocket-realtime) for real-time updates

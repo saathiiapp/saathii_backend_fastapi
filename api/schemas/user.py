@@ -145,125 +145,6 @@ class FavoriteActionResponse(BaseModel):
     listener_id: int
     is_favorited: bool
 
-# Simplified Wallet schemas
-class UserBalanceResponse(BaseModel):
-    user_id: int
-    balance_coins: int
-
-class AddCoinRequest(BaseModel):
-    coins: int = Field(..., gt=0, description="Number of coins to add")
-    tx_type: str = Field(default="purchase", description="Transaction type")
-    money_amount: float = Field(default=0.0, description="Money amount associated")
-
-class AddCoinResponse(BaseModel):
-    transaction_id: int
-    coins_added: int
-    new_balance: int
-    message: str
-    created_at: datetime
-
-class RechargeTransaction(BaseModel):
-    transaction_id: int
-    coins_added: int
-    money_amount: float
-    tx_type: str
-    created_at: datetime
-
-class RechargeHistoryResponse(BaseModel):
-    transactions: List[RechargeTransaction]
-    total_coins_added: int
-    total_money_spent: float
-    page: int
-    per_page: int
-    has_next: bool
-    has_previous: bool
-
-class ListenerBalanceResponse(BaseModel):
-    user_id: int
-    withdrawable_money: float
-    total_earned: float
-
-class ListenerEarning(BaseModel):
-    call_id: int
-    user_id: int
-    listener_id: int
-    call_type: str
-    start_time: datetime
-    end_time: Optional[datetime]
-    duration_minutes: Optional[int]
-    money_earned: float
-    created_at: datetime
-
-class ListenerEarningsResponse(BaseModel):
-    earnings: List[ListenerEarning]
-    total_earned: float
-    total_calls: int
-    page: int
-    per_page: int
-    has_next: bool
-    has_previous: bool
-
-# Legacy wallet schemas (to be removed)
-class WalletBalanceResponse(BaseModel):
-    user_id: int
-    balance_coins: int
-    withdrawable_money: float
-    total_earned: float
-    total_withdrawn: float
-    pending_withdrawals: float
-
-class CallEarning(BaseModel):
-    call_id: int
-    user_id: int
-    listener_id: int
-    call_type: str
-    start_time: datetime
-    end_time: Optional[datetime]
-    duration_minutes: Optional[int]
-    money_earned: float
-    coins_earned: int
-    status: str
-
-class CallEarningsResponse(BaseModel):
-    earnings: List[CallEarning]
-    total_earnings: float
-    total_calls: int
-    page: int
-    per_page: int
-    has_next: bool
-    has_previous: bool
-
-class WithdrawalRequest(BaseModel):
-    amount: float = Field(..., gt=0, description="Amount to withdraw (must be positive)")
-
-class WithdrawalResponse(BaseModel):
-    transaction_id: int
-    amount: float
-    message: str
-    created_at: datetime
-
-class WithdrawalHistoryItem(BaseModel):
-    transaction_id: int
-    amount: float
-    created_at: datetime
-    status: str = "pending"  # withdraw transactions are always pending until processed
-
-class WithdrawalHistoryResponse(BaseModel):
-    withdrawals: List[WithdrawalHistoryItem]
-    total_withdrawn: float
-    pending_amount: float
-    page: int
-    per_page: int
-    has_next: bool
-    has_previous: bool
-
-class BankDetailsUpdate(BaseModel):
-    payout_account: dict = Field(..., description="Bank account details for withdrawal (JSON)")
-
-class BankDetailsResponse(BaseModel):
-    has_bank_details: bool
-    message: str
-
 # Blocking related schemas
 class BlockUserRequest(BaseModel):
     blocked_id: int = Field(..., description="ID of the user to block")
@@ -307,9 +188,6 @@ class ListenerVerificationStatus(str, Enum):
 class UploadAudioRequest(BaseModel):
     audio_file_url: str = Field(..., description="S3 URL for the audio file")
 
-class UploadAudioFileRequest(BaseModel):
-    # This will be used for direct file upload
-    pass
 
 class ListenerVerificationResponse(BaseModel):
     sample_id: int
@@ -336,16 +214,3 @@ class AdminReviewResponse(BaseModel):
     message: str
     verification: ListenerVerificationResponse
 
-# Add coins to wallet schemas
-class AddCoinsRequest(BaseModel):
-    coins: int = Field(..., gt=0, description="Number of coins to add (must be positive)")
-    tx_type: str = Field(default="purchase", description="Transaction type (purchase, bonus, referral_bonus)")
-    money_amount: Optional[float] = Field(default=0.0, ge=0, description="Optional money amount associated with the transaction")
-
-class AddCoinsResponse(BaseModel):
-    transaction_id: int
-    coins_added: int
-    money_amount: float
-    new_balance: int
-    message: str
-    created_at: datetime
