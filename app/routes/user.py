@@ -5,16 +5,20 @@ from app.clients.redis_client import redis_client
 from app.clients.db import get_db_pool
 from app.clients.jwt_handler import decode_jwt
 from app.utils.presence import mark_inactive_users_offline, cleanup_expired_busy_status
+from app.utils.realtime import broadcast_user_status_update, get_user_status_for_broadcast
 from app.schemas.user import (
     UserResponse, 
     EditUserRequest, 
     UserStatusResponse, 
     UpdateStatusRequest, 
     HeartbeatRequest, 
-    UserPresenceResponse
+    UserPresenceResponse,
+    ListenerFeedItem,
+    FeedResponse,
+    FeedFilters
 )
 
-router = APIRouter()
+router = APIRouter(tags=["User Management"])
 
 
 async def get_current_user_async(authorization: str = Header(...)):
@@ -34,7 +38,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
-@router.get("/users/me", response_model=UserResponse)
+@router.get("/users/me", response_model=UserResponse, tags=["User Management", "Profile"])
 async def get_me(user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -55,7 +59,7 @@ async def get_me(user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.put("/users/me", response_model=UserResponse)
+@router.put("/users/me", response_model=UserResponse, tags=["User Management", "Profile"])
 async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -83,7 +87,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.delete("/users/me")
+@router.delete("/users/me", tags=["User Management", "Profile"])
 async def delete_me(authorization: str = Header(...), user=Depends(get_current_user_async)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
@@ -112,7 +116,7 @@ async def delete_me(authorization: str = Header(...), user=Depends(get_current_u
 
 
 # Status/Presence endpoints for React Native
-@router.get("/users/me/status", response_model=UserStatusResponse)
+@router.get("/users/me/status", response_model=UserStatusResponse, tags=["User Management", "Presence"])
 async def get_my_status(user=Depends(get_current_user_async)):
     """Get current user's online status"""
     pool = await get_db_pool()
@@ -126,7 +130,7 @@ async def get_my_status(user=Depends(get_current_user_async)):
         return dict(status)
 
 
-@router.put("/users/me/status", response_model=UserStatusResponse)
+@router.put("/users/me/status", response_model=UserStatusResponse, tags=["User Management", "Presence"])
 async def update_my_status(data: UpdateStatusRequest, user=Depends(get_current_user_async)):
     """Update current user's online status (online/offline, busy status)"""
     pool = await get_db_pool()
@@ -173,14 +177,21 @@ async def update_my_status(data: UpdateStatusRequest, user=Depends(get_current_u
         status = await conn.fetchrow(query, *params)
         if not status:
             raise HTTPException(status_code=404, detail="User status not found")
+        
+        # Broadcast status update to all connected clients
+        status_data = await get_user_status_for_broadcast(user["user_id"])
+        if status_data:
+            await broadcast_user_status_update(user["user_id"], status_data)
+        
         return dict(status)
 
 
-@router.post("/users/me/heartbeat")
+@router.post("/users/me/heartbeat", tags=["User Management", "Presence"])
 async def heartbeat(user=Depends(get_current_user_async)):
     """Send heartbeat to keep user online and update last_seen"""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
+        # Update last_seen timestamp
         await conn.execute(
             """
             UPDATE user_status 
@@ -189,10 +200,17 @@ async def heartbeat(user=Depends(get_current_user_async)):
             """,
             user["user_id"]
         )
+        
+        # Get updated status for broadcasting
+        status_data = await get_user_status_for_broadcast(user["user_id"])
+        if status_data:
+            # Broadcast status update to all connected clients
+            await broadcast_user_status_update(user["user_id"], status_data)
+    
     return {"message": "Heartbeat received"}
 
 
-@router.get("/users/{user_id}/presence", response_model=UserPresenceResponse)
+@router.get("/users/{user_id}/presence", response_model=UserPresenceResponse, tags=["User Management", "Presence"])
 async def get_user_presence(user_id: int, user=Depends(get_current_user_async)):
     """Get another user's presence status"""
     pool = await get_db_pool()
@@ -217,7 +235,7 @@ async def get_user_presence(user_id: int, user=Depends(get_current_user_async)):
         return dict(presence)
 
 
-@router.get("/users/presence", response_model=List[UserPresenceResponse])
+@router.get("/users/presence", response_model=List[UserPresenceResponse], tags=["User Management", "Presence"])
 async def get_multiple_users_presence(
     user_ids: str,  # Comma-separated user IDs
     user=Depends(get_current_user_async)
@@ -252,7 +270,7 @@ async def get_multiple_users_presence(
         return [dict(presence) for presence in presences]
 
 
-@router.post("/admin/cleanup-presence")
+@router.post("/admin/cleanup-presence", tags=["User Management", "Admin"])
 async def cleanup_presence(user=Depends(get_current_user_async)):
     """Admin endpoint to manually trigger presence cleanup"""
     # Note: In production, you might want to add admin role checking here
@@ -268,3 +286,227 @@ async def cleanup_presence(user=Depends(get_current_user_async)):
         "users_marked_offline": offline_result,
         "busy_status_cleared": busy_result
     }
+
+
+@router.get("/feed/listeners", response_model=FeedResponse, tags=["User Management", "Feed"])
+async def get_listeners_feed(
+    online_only: bool = False,
+    available_only: bool = False,
+    language: str = None,
+    interests: str = None,  # Comma-separated string
+    min_rating: int = None,
+    page: int = 1,
+    per_page: int = 20,
+    user=Depends(get_current_user_async)
+):
+    """
+    Get all listeners for the feed page with their details and status.
+    
+    - **online_only**: Show only online users
+    - **available_only**: Show only available users (online and not busy)
+    - **language**: Filter by preferred language
+    - **interests**: Filter by interests (comma-separated)
+    - **min_rating**: Minimum rating filter
+    - **page**: Page number for pagination
+    - **per_page**: Number of items per page
+    """
+    # Validate pagination parameters
+    if page < 1:
+        page = 1
+    if per_page < 1 or per_page > 100:
+        per_page = 20
+    
+    offset = (page - 1) * per_page
+    
+    # Parse interests if provided
+    interest_list = None
+    if interests:
+        interest_list = [interest.strip() for interest in interests.split(",") if interest.strip()]
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Build the base query
+        base_query = """
+            SELECT 
+                u.user_id,
+                u.username,
+                u.sex,
+                u.bio,
+                u.interests,
+                u.profile_image_url,
+                u.preferred_language,
+                u.rating,
+                u.country,
+                array_agg(ur.role) FILTER (WHERE ur.active = TRUE) AS roles,
+                us.is_online,
+                us.last_seen,
+                us.is_busy,
+                us.busy_until,
+                (us.is_online AND NOT us.is_busy) AS is_available
+            FROM users u
+            LEFT JOIN user_roles ur ON u.user_id = ur.user_id
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            WHERE u.user_id != $1  -- Exclude current user
+        """
+        
+        # Build WHERE conditions
+        conditions = ["u.user_id != $1"]
+        params = [user["user_id"]]
+        param_count = 1
+        
+        if online_only:
+            param_count += 1
+            conditions.append(f"us.is_online = ${param_count}")
+            params.append(True)
+        
+        if available_only:
+            param_count += 1
+            conditions.append(f"us.is_online = ${param_count}")
+            params.append(True)
+            param_count += 1
+            conditions.append(f"us.is_busy = ${param_count}")
+            params.append(False)
+        
+        if language:
+            param_count += 1
+            conditions.append(f"u.preferred_language = ${param_count}")
+            params.append(language)
+        
+        if interest_list:
+            param_count += 1
+            conditions.append(f"u.interests && ${param_count}")
+            params.append(interest_list)
+        
+        if min_rating is not None:
+            param_count += 1
+            conditions.append(f"u.rating >= ${param_count}")
+            params.append(min_rating)
+        
+        # Add WHERE clause
+        if len(conditions) > 1:  # More than just the user_id exclusion
+            base_query += " AND " + " AND ".join(conditions[1:])
+        
+        # Add GROUP BY and ORDER BY
+        base_query += """
+            GROUP BY u.user_id, us.is_online, us.last_seen, us.is_busy, us.busy_until
+            ORDER BY 
+                us.is_online DESC,  -- Online users first
+                us.is_busy ASC,     -- Available users first
+                u.rating DESC NULLS LAST,  -- Higher rated users first
+                us.last_seen DESC   -- Recently active users first
+        """
+        
+        # Get total count for pagination
+        count_query = f"""
+            SELECT COUNT(DISTINCT u.user_id)
+            FROM users u
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            WHERE {' AND '.join(conditions)}
+        """
+        
+        total_count = await conn.fetchval(count_query, *params)
+        
+        # Get online and available counts
+        online_count_query = f"""
+            SELECT COUNT(DISTINCT u.user_id)
+            FROM users u
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            WHERE {' AND '.join(conditions)} AND us.is_online = true
+        """
+        online_count = await conn.fetchval(online_count_query, *params)
+        
+        available_count_query = f"""
+            SELECT COUNT(DISTINCT u.user_id)
+            FROM users u
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            WHERE {' AND '.join(conditions)} AND us.is_online = true AND us.is_busy = false
+        """
+        available_count = await conn.fetchval(available_count_query, *params)
+        
+        # Add pagination to the main query
+        paginated_query = base_query + f" LIMIT ${param_count + 1} OFFSET ${param_count + 2}"
+        params.extend([per_page, offset])
+        
+        # Execute the main query
+        listeners_data = await conn.fetch(paginated_query, *params)
+        
+        # Convert to response models
+        listeners = []
+        for row in listeners_data:
+            listener = ListenerFeedItem(
+                user_id=row["user_id"],
+                username=row["username"],
+                sex=row["sex"],
+                bio=row["bio"],
+                interests=row["interests"],
+                profile_image_url=row["profile_image_url"],
+                preferred_language=row["preferred_language"],
+                rating=row["rating"],
+                country=row["country"],
+                roles=row["roles"],
+                is_online=row["is_online"],
+                last_seen=row["last_seen"],
+                is_busy=row["is_busy"],
+                busy_until=row["busy_until"],
+                is_available=row["is_available"]
+            )
+            listeners.append(listener)
+        
+        # Calculate pagination info
+        has_next = offset + per_page < total_count
+        has_previous = page > 1
+        
+        return FeedResponse(
+            listeners=listeners,
+            total_count=total_count,
+            online_count=online_count,
+            available_count=available_count,
+            page=page,
+            per_page=per_page,
+            has_next=has_next,
+            has_previous=has_previous
+        )
+
+
+@router.get("/feed/stats", tags=["User Management", "Feed"])
+async def get_feed_stats(user=Depends(get_current_user_async)):
+    """
+    Get listener statistics for the feed page.
+    Returns counts of total, online, and available listeners.
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get total listeners (excluding current user)
+        total_count = await conn.fetchval(
+            "SELECT COUNT(*) FROM users WHERE user_id != $1",
+            user["user_id"]
+        )
+        
+        # Get online listeners
+        online_count = await conn.fetchval(
+            """
+            SELECT COUNT(DISTINCT u.user_id)
+            FROM users u
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            WHERE u.user_id != $1 AND us.is_online = true
+            """,
+            user["user_id"]
+        )
+        
+        # Get available listeners (online and not busy)
+        available_count = await conn.fetchval(
+            """
+            SELECT COUNT(DISTINCT u.user_id)
+            FROM users u
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            WHERE u.user_id != $1 AND us.is_online = true AND us.is_busy = false
+            """,
+            user["user_id"]
+        )
+        
+        return {
+            "total_listeners": total_count,
+            "online_listeners": online_count,
+            "available_listeners": available_count,
+            "busy_listeners": online_count - available_count
+        }

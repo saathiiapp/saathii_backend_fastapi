@@ -18,10 +18,10 @@ from app.schemas.auth import (
 )
 from app.utils.otp import generate_otp, send_otp_message
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 
 
-@router.post("/auth/request_otp")
+@router.post("/auth/request_otp", tags=["Authentication", "OTP"])
 async def request_otp(data: OTPRequest):
     # Simple rate limiting: 5 requests per 15 minutes per phone
     rl_key = f"otp_rl:{data.phone}"
@@ -37,7 +37,7 @@ async def request_otp(data: OTPRequest):
     return {"message": "OTP sent"}
 
 
-@router.post("/auth/resend_otp")
+@router.post("/auth/resend_otp", tags=["Authentication", "OTP"])
 async def resend_otp(data: OTPRequest):
     # Short throttle: allow one resend every 60 seconds per phone
     throttle_key = f"otp_resend:{data.phone}"
@@ -59,7 +59,7 @@ async def resend_otp(data: OTPRequest):
     return {"message": "OTP sent"}
 
 
-@router.post("/auth/verify", response_model=VerifyResponse)
+@router.post("/auth/verify", response_model=VerifyResponse, tags=["Authentication", "OTP"])
 async def verify_otp(data: VerifyRequest):
     stored_otp = await redis_client.get(f"otp:{data.phone}")
     if not stored_otp or stored_otp != data.otp:
@@ -96,7 +96,7 @@ async def verify_otp(data: VerifyRequest):
         return VerifyResponse(status="registered", access_token=access_token, refresh_token=refresh_token)
 
 
-@router.post("/auth/register", response_model=TokenPairResponse)
+@router.post("/auth/register", response_model=TokenPairResponse, tags=["Authentication", "Registration"])
 async def register_user(data: RegisterRequest):
     reg = decode_jwt(data.registration_token)
     if not reg or reg.get("type") != "registration":
@@ -158,7 +158,7 @@ async def register_user(data: RegisterRequest):
     return TokenPairResponse(access_token=access_token, refresh_token=refresh_token)
 
 
-@router.post("/auth/refresh", response_model=TokenPairResponse)
+@router.post("/auth/refresh", response_model=TokenPairResponse, tags=["Authentication", "Token Management"])
 async def refresh_tokens(data: RefreshRequest):
     payload = decode_jwt(data.refresh_token)
     if not payload or payload.get("type") != "refresh":
@@ -187,7 +187,7 @@ async def refresh_tokens(data: RefreshRequest):
     return TokenPairResponse(access_token=new_access, refresh_token=new_refresh)
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", tags=["Authentication", "Token Management"])
 async def logout(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
