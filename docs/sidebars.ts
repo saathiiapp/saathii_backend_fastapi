@@ -31,6 +31,7 @@ const sidebars: SidebarsConfig = {
         'api/blocking',
         'api/verification',
         'api/websocket-realtime',
+        'api/database-impact',
         'api/swagger-ui',
       ],
     },
