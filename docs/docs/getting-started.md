@@ -110,31 +110,80 @@ If you need file upload functionality:
 
 ## 📱 API Endpoints Overview
 
-### Authentication
+### 🔐 Authentication
 - `POST /auth/request_otp` - Request OTP for phone number
+- `POST /auth/resend_otp` - Resend OTP
 - `POST /auth/verify` - Verify OTP and get tokens
 - `POST /auth/register` - Complete user registration
 - `POST /auth/refresh` - Refresh access token
 - `POST /auth/logout` - Logout and invalidate tokens
 
-### User Management
+### 👤 User Management
 - `GET /users/me` - Get current user profile
 - `PUT /users/me` - Update user profile
 - `DELETE /users/me` - Delete user account
+
+### 📡 Presence & Status
 - `GET /users/me/status` - Get user presence status
 - `PUT /users/me/status` - Update user presence status
+- `POST /users/me/heartbeat` - Send heartbeat
+- `GET /users/{user_id}/presence` - Get user presence
+- `GET /users/presence` - Get multiple users presence
+- `POST /admin/cleanup-presence` - Cleanup presence data
 
-### Feed System
+### 📰 Feeds
 - `GET /feed/listeners` - Get listeners feed with filters
 - `GET /feed/stats` - Get feed statistics
 
-### Call Management
+### 💰 Wallets
+- `GET /wallet/balance` - Get wallet balance and coins
+- `POST /wallet/add-coins` - Add coins to wallet
+- `GET /wallet/earnings` - Get call earnings
+- `POST /wallet/withdraw` - Request withdrawal
+- `GET /wallet/withdrawals` - Get withdrawal history
+- `PUT /wallet/bank-details` - Update bank details
+- `GET /wallet/bank-details` - Get bank details status
+
+### 📊 Transactions
+- `GET /transactions/user` - Get user transaction history
+- `GET /transactions/listener` - Get listener transaction history
+
+### 📞 Calls
 - `POST /calls/start` - Start a new call
 - `POST /calls/end` - End an ongoing call
+- `GET /calls/ongoing` - Get ongoing call details
 - `GET /calls/history` - Get call history
+- `GET /calls/history/summary` - Get call history summary
 - `GET /calls/balance` - Get coin balance
+- `POST /calls/emergency-end/{call_id}` - Emergency end call
+- `POST /calls/recharge` - Recharge coins
+- `GET /calls/recharge/history` - Get recharge history
+- `POST /calls/bill-minute/{call_id}` - Bill call minute
+- `POST /calls/cleanup` - Cleanup calls
+- `GET /calls/status` - Get call system status
+- `GET /calls/rates` - Get call rates
 
-### WebSocket
+### ⭐ Favorites
+- `POST /favorites/add` - Add favorite listener
+- `DELETE /favorites/remove` - Remove favorite listener
+- `GET /favorites` - Get favorites list
+- `GET /favorites/check/{listener_id}` - Check favorite status
+
+### 🚫 Blocking
+- `POST /block` - Block user
+- `DELETE /block` - Unblock user
+- `GET /blocked` - Get blocked users list
+- `GET /block/check/{user_id}` - Check block status
+
+### ✅ Verification
+- `POST /verification/upload-audio-file` - Upload verification audio file
+- `POST /verification/upload-audio-url` - Upload verification audio URL
+- `GET /verification/status` - Get verification status
+- `GET /verification/history` - Get verification history
+- `GET /admin/verification/pending` - Get pending verifications (Admin)
+- `POST /admin/verification/review` - Review verification (Admin)
+
+### 🔌 WebSocket
 - `ws://localhost:8000/ws/feed` - Real-time feed updates
 - `ws://localhost:8000/ws/presence` - Real-time presence updates
 

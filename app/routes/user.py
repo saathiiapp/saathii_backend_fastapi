@@ -42,7 +42,9 @@ from app.schemas.user import (
     VerificationStatusResponse,
     AdminReviewRequest,
     AdminReviewResponse,
-    ListenerVerificationStatus
+    ListenerVerificationStatus,
+    AddCoinsRequest,
+    AddCoinsResponse
 )
 
 router = APIRouter(tags=["User Management"])
@@ -65,7 +67,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
-@router.get("/users/me", response_model=UserResponse, tags=["User Management"])
+@router.get("/users/me", response_model=UserResponse)
 async def get_me(user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -86,7 +88,7 @@ async def get_me(user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.put("/users/me", response_model=UserResponse, tags=["User Management"])
+@router.put("/users/me", response_model=UserResponse)
 async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -114,7 +116,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.delete("/users/me", tags=["User Management"])
+@router.delete("/users/me")
 async def delete_me(authorization: str = Header(...), user=Depends(get_current_user_async)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
@@ -143,7 +145,7 @@ async def delete_me(authorization: str = Header(...), user=Depends(get_current_u
 
 
 # Status/Presence endpoints for React Native
-@router.get("/users/me/status", response_model=UserStatusResponse, tags=["User Management"])
+@router.get("/users/me/status", response_model=UserStatusResponse)
 async def get_my_status(user=Depends(get_current_user_async)):
     """Get current user's online status"""
     pool = await get_db_pool()
@@ -157,7 +159,7 @@ async def get_my_status(user=Depends(get_current_user_async)):
         return dict(status)
 
 
-@router.put("/users/me/status", response_model=UserStatusResponse, tags=["User Management"])
+@router.put("/users/me/status", response_model=UserStatusResponse)
 async def update_my_status(data: UpdateStatusRequest, user=Depends(get_current_user_async)):
     """Update current user's online status (online/offline, busy status)"""
     pool = await get_db_pool()
@@ -213,7 +215,7 @@ async def update_my_status(data: UpdateStatusRequest, user=Depends(get_current_u
         return dict(status)
 
 
-@router.post("/users/me/heartbeat", tags=["User Management"])
+@router.post("/users/me/heartbeat")
 async def heartbeat(user=Depends(get_current_user_async)):
     """Send heartbeat to keep user online and update last_seen"""
     pool = await get_db_pool()
@@ -237,7 +239,7 @@ async def heartbeat(user=Depends(get_current_user_async)):
     return {"message": "Heartbeat received"}
 
 
-@router.get("/users/{user_id}/presence", response_model=UserPresenceResponse, tags=["User Management"])
+@router.get("/users/{user_id}/presence", response_model=UserPresenceResponse)
 async def get_user_presence(user_id: int, user=Depends(get_current_user_async)):
     """Get another user's presence status"""
     pool = await get_db_pool()
@@ -262,7 +264,7 @@ async def get_user_presence(user_id: int, user=Depends(get_current_user_async)):
         return dict(presence)
 
 
-@router.get("/users/presence", response_model=List[UserPresenceResponse], tags=["User Management"])
+@router.get("/users/presence", response_model=List[UserPresenceResponse])
 async def get_multiple_users_presence(
     user_ids: str,  # Comma-separated user IDs
     user=Depends(get_current_user_async)
@@ -297,7 +299,7 @@ async def get_multiple_users_presence(
         return [dict(presence) for presence in presences]
 
 
-@router.post("/admin/cleanup-presence", tags=["User Management"])
+@router.post("/admin/cleanup-presence")
 async def cleanup_presence(user=Depends(get_current_user_async)):
     """Admin endpoint to manually trigger presence cleanup"""
     # Note: In production, you might want to add admin role checking here
@@ -315,7 +317,7 @@ async def cleanup_presence(user=Depends(get_current_user_async)):
     }
 
 
-@router.get("/feed/listeners", response_model=FeedResponse, tags=["User Management"])
+@router.get("/feed/listeners", response_model=FeedResponse)
 async def get_listeners_feed(
     online_only: bool = False,
     available_only: bool = False,
@@ -500,7 +502,7 @@ async def get_listeners_feed(
         )
 
 
-@router.get("/feed/stats", tags=["User Management"])
+@router.get("/feed/stats")
 async def get_feed_stats(user=Depends(get_current_user_async)):
     """
     Get listener statistics for the feed page.
@@ -543,7 +545,7 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
             "busy_listeners": online_count - available_count
         }
 
-@router.post("/favorites/add", response_model=FavoriteActionResponse, tags=["Favorites"])
+@router.post("/favorites/add", response_model=FavoriteActionResponse)
 async def add_favorite(
     data: AddFavoriteRequest,
     user=Depends(get_current_user_async)
@@ -602,7 +604,7 @@ async def add_favorite(
             is_favorited=True
         )
 
-@router.delete("/favorites/remove", response_model=FavoriteActionResponse, tags=["Favorites"])
+@router.delete("/favorites/remove", response_model=FavoriteActionResponse)
 async def remove_favorite(
     data: RemoveFavoriteRequest,
     user=Depends(get_current_user_async)
@@ -649,7 +651,7 @@ async def remove_favorite(
             is_favorited=False
         )
 
-@router.get("/favorites", response_model=FavoritesResponse, tags=["Favorites"])
+@router.get("/favorites", response_model=FavoritesResponse)
 async def get_favorites(
     page: int = 1,
     per_page: int = 20,
@@ -772,7 +774,7 @@ async def get_favorites(
             has_previous=has_previous
         )
 
-@router.get("/favorites/check/{listener_id}", response_model=FavoriteActionResponse, tags=["Favorites"])
+@router.get("/favorites/check/{listener_id}", response_model=FavoriteActionResponse)
 async def check_favorite_status(
     listener_id: int,
     user=Depends(get_current_user_async)
@@ -807,7 +809,7 @@ async def check_favorite_status(
         )
 
 # Wallet and withdrawal related endpoints
-@router.get("/wallet/balance", response_model=WalletBalanceResponse, tags=["Wallet"])
+@router.get("/wallet/balance", response_model=WalletBalanceResponse)
 async def get_wallet_balance(user=Depends(get_current_user_async)):
     """Get listener's wallet balance and earnings summary"""
     user_id = user["user_id"]
@@ -869,7 +871,71 @@ async def get_wallet_balance(user=Depends(get_current_user_async)):
             pending_withdrawals=float(pending_withdrawals or 0)
         )
 
-@router.get("/wallet/earnings", response_model=CallEarningsResponse, tags=["Wallet"])
+@router.post("/wallet/add-coins", response_model=AddCoinsResponse)
+async def add_coins_to_wallet(
+    data: AddCoinsRequest,
+    user=Depends(get_current_user_async)
+):
+    """Add coins to user's wallet"""
+    user_id = user["user_id"]
+    coins_to_add = data.coins
+    tx_type = data.tx_type
+    money_amount = data.money_amount or 0.0
+    
+    # Validate transaction type
+    valid_tx_types = ["purchase", "bonus", "referral_bonus"]
+    if tx_type not in valid_tx_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid transaction type. Must be one of: {', '.join(valid_tx_types)}"
+        )
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get or create wallet
+        wallet = await conn.fetchrow(
+            "SELECT wallet_id, balance_coins FROM user_wallets WHERE user_id = $1",
+            user_id
+        )
+        
+        if not wallet:
+            # Create wallet if it doesn't exist
+            wallet = await conn.fetchrow(
+                """
+                INSERT INTO user_wallets (user_id, balance_coins, created_at, updated_at)
+                VALUES ($1, 0, now(), now())
+                RETURNING wallet_id, balance_coins
+                """,
+                user_id
+            )
+        
+        # Update wallet balance
+        new_balance = wallet['balance_coins'] + coins_to_add
+        await conn.execute(
+            "UPDATE user_wallets SET balance_coins = $1, updated_at = now() WHERE wallet_id = $2",
+            new_balance, wallet['wallet_id']
+        )
+        
+        # Create transaction record
+        transaction = await conn.fetchrow(
+            """
+            INSERT INTO user_transactions (wallet_id, tx_type, coins_change, money_change, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, now(), now())
+            RETURNING transaction_id, created_at
+            """,
+            wallet['wallet_id'], tx_type, coins_to_add, money_amount
+        )
+        
+        return AddCoinsResponse(
+            transaction_id=transaction['transaction_id'],
+            coins_added=coins_to_add,
+            money_amount=money_amount,
+            new_balance=new_balance,
+            message=f"Successfully added {coins_to_add} coins to wallet" + (f" (₹{money_amount:.2f})" if money_amount > 0 else ""),
+            created_at=transaction['created_at']
+        )
+
+@router.get("/wallet/earnings", response_model=CallEarningsResponse)
 async def get_call_earnings(
     page: int = 1,
     per_page: int = 20,
@@ -949,7 +1015,7 @@ async def get_call_earnings(
             has_previous=has_previous
         )
 
-@router.post("/wallet/withdraw", response_model=WithdrawalResponse, tags=["Wallet"])
+@router.post("/wallet/withdraw", response_model=WithdrawalResponse)
 async def request_withdrawal(
     data: WithdrawalRequest,
     user=Depends(get_current_user_async)
@@ -1005,7 +1071,7 @@ async def request_withdrawal(
             created_at=transaction['created_at']
         )
 
-@router.get("/wallet/withdrawals", response_model=WithdrawalHistoryResponse, tags=["Wallet"])
+@router.get("/wallet/withdrawals", response_model=WithdrawalHistoryResponse)
 async def get_withdrawal_history(
     page: int = 1,
     per_page: int = 20,
@@ -1085,7 +1151,7 @@ async def get_withdrawal_history(
             has_previous=has_previous
         )
 
-@router.put("/wallet/bank-details", response_model=BankDetailsResponse, tags=["Wallet"])
+@router.put("/wallet/bank-details", response_model=BankDetailsResponse)
 async def update_bank_details(
     data: BankDetailsUpdate,
     user=Depends(get_current_user_async)
@@ -1119,7 +1185,7 @@ async def update_bank_details(
             message="Bank details updated successfully"
         )
 
-@router.get("/wallet/bank-details", response_model=BankDetailsResponse, tags=["Wallet"])
+@router.get("/wallet/bank-details", response_model=BankDetailsResponse)
 async def get_bank_details_status(user=Depends(get_current_user_async)):
     """Check if listener has bank details configured"""
     user_id = user["user_id"]
@@ -1139,7 +1205,7 @@ async def get_bank_details_status(user=Depends(get_current_user_async)):
         )
 
 # Blocking related endpoints
-@router.post("/block", response_model=BlockActionResponse, tags=["Blocking"])
+@router.post("/block", response_model=BlockActionResponse)
 async def block_user(
     data: BlockUserRequest,
     user=Depends(get_current_user_async)
@@ -1197,7 +1263,7 @@ async def block_user(
             is_blocked=True
         )
 
-@router.delete("/block", response_model=BlockActionResponse, tags=["Blocking"])
+@router.delete("/block", response_model=BlockActionResponse)
 async def unblock_user(
     data: UnblockUserRequest,
     user=Depends(get_current_user_async)
@@ -1246,7 +1312,7 @@ async def unblock_user(
             is_blocked=False
         )
 
-@router.get("/blocked", response_model=BlockedUsersResponse, tags=["Blocking"])
+@router.get("/blocked", response_model=BlockedUsersResponse)
 async def get_blocked_users(
     page: int = 1,
     per_page: int = 20,
@@ -1329,7 +1395,7 @@ async def get_blocked_users(
             has_previous=has_previous
         )
 
-@router.get("/block/check/{user_id}", response_model=BlockActionResponse, tags=["Blocking"])
+@router.get("/block/check/{user_id}", response_model=BlockActionResponse)
 async def check_block_status(
     user_id: int,
     current_user=Depends(get_current_user_async)
@@ -1366,7 +1432,7 @@ async def check_block_status(
         )
 
 # Listener Verification endpoints
-@router.post("/verification/upload-audio-file", response_model=ListenerVerificationResponse, tags=["Listener Verification"])
+@router.post("/verification/upload-audio-file", response_model=ListenerVerificationResponse)
 async def upload_verification_audio_file(
     audio_file: UploadFile = File(..., description="Audio file to upload"),
     user=Depends(get_current_user_async)
@@ -1463,7 +1529,7 @@ async def upload_verification_audio_file(
             reviewed_at=verification['reviewed_at']
         )
 
-@router.post("/verification/upload-audio-url", response_model=ListenerVerificationResponse, tags=["Listener Verification"])
+@router.post("/verification/upload-audio-url", response_model=ListenerVerificationResponse)
 async def upload_verification_audio_url(
     data: UploadAudioRequest,
     user=Depends(get_current_user_async)
@@ -1532,7 +1598,7 @@ async def upload_verification_audio_url(
             reviewed_at=verification['reviewed_at']
         )
 
-@router.get("/verification/status", response_model=VerificationStatusResponse, tags=["Listener Verification"])
+@router.get("/verification/status", response_model=VerificationStatusResponse)
 async def get_verification_status(user=Depends(get_current_user_async)):
     """Get listener's verification status"""
     user_id = user["user_id"]
@@ -1595,7 +1661,7 @@ async def get_verification_status(user=Depends(get_current_user_async)):
             message=message
         )
 
-@router.get("/verification/history", response_model=List[ListenerVerificationResponse], tags=["Listener Verification"])
+@router.get("/verification/history", response_model=List[ListenerVerificationResponse])
 async def get_verification_history(user=Depends(get_current_user_async)):
     """Get listener's verification history"""
     user_id = user["user_id"]
@@ -1642,7 +1708,7 @@ async def get_verification_history(user=Depends(get_current_user_async)):
         return verification_list
 
 # Admin endpoints for verification review
-@router.get("/admin/verification/pending", response_model=List[ListenerVerificationResponse], tags=["Admin - Verification"])
+@router.get("/admin/verification/pending", response_model=List[ListenerVerificationResponse])
 async def get_pending_verifications(
     page: int = 1,
     per_page: int = 20,
@@ -1691,7 +1757,7 @@ async def get_pending_verifications(
         
         return verification_list
 
-@router.post("/admin/verification/review", response_model=AdminReviewResponse, tags=["Admin - Verification"])
+@router.post("/admin/verification/review", response_model=AdminReviewResponse)
 async def review_verification(
     data: AdminReviewRequest,
     user=Depends(get_current_user_async)

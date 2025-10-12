@@ -277,3 +277,17 @@ class AdminReviewResponse(BaseModel):
     success: bool
     message: str
     verification: ListenerVerificationResponse
+
+# Add coins to wallet schemas
+class AddCoinsRequest(BaseModel):
+    coins: int = Field(..., gt=0, description="Number of coins to add (must be positive)")
+    tx_type: str = Field(default="purchase", description="Transaction type (purchase, bonus, referral_bonus)")
+    money_amount: Optional[float] = Field(default=0.0, ge=0, description="Optional money amount associated with the transaction")
+
+class AddCoinsResponse(BaseModel):
+    transaction_id: int
+    coins_added: int
+    money_amount: float
+    new_balance: int
+    message: str
+    created_at: datetime

@@ -353,6 +353,54 @@ Content-Type: application/json
 - ₹500 = 1000 coins (2:1 ratio)
 - ₹1000 = 2000 coins (2:1 ratio)
 
+### Get Recharge History
+
+Get user's coin recharge history.
+
+**Endpoint:** `GET /calls/recharge/history`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `per_page`: Items per page (default: 20, max: 100)
+
+**Response:**
+```json
+{
+  "recharges": [
+    {
+      "recharge_id": 123,
+      "amount_paid": 150.00,
+      "coins_received": 300,
+      "payment_method": "razorpay",
+      "transaction_id": "txn_abc123",
+      "status": "completed",
+      "created_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "recharge_id": 124,
+      "amount_paid": 300.00,
+      "coins_received": 600,
+      "payment_method": "razorpay",
+      "transaction_id": "txn_def456",
+      "status": "completed",
+      "created_at": "2024-01-14T15:20:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 2,
+    "has_next": false,
+    "has_previous": false
+  }
+}
+```
+
 ### Bill Call Minute
 
 Bill for one minute of call time.
@@ -382,6 +430,63 @@ Authorization: Bearer <access_token>
 - Called every minute during ongoing calls
 - Deducts coins based on call type
 - Returns error if insufficient coins
+
+### Emergency End Call
+
+Emergency end a call (admin or system use).
+
+**Endpoint:** `POST /calls/emergency-end/{call_id}`
+
+**Path Parameters:**
+- `call_id`: ID of the call to end
+
+**Response:**
+```json
+{
+  "call_id": 123,
+  "status": "emergency_ended",
+  "duration_minutes": 15.5,
+  "coins_spent": 155,
+  "remaining_coins": 345,
+  "message": "Call ended due to emergency"
+}
+```
+
+### Cleanup Calls
+
+Clean up expired or orphaned calls (admin use).
+
+**Endpoint:** `POST /calls/cleanup`
+
+**Response:**
+```json
+{
+  "message": "Call cleanup completed",
+  "calls_cleaned": 5,
+  "calls_ended": 3,
+  "calls_orphaned": 2
+}
+```
+
+### Get Call System Status
+
+Get current call system status and statistics.
+
+**Endpoint:** `GET /calls/status`
+
+**Response:**
+```json
+{
+  "system_status": "operational",
+  "active_calls": 12,
+  "total_calls_today": 156,
+  "average_call_duration": 18.5,
+  "total_coins_processed": 45000,
+  "listeners_online": 45,
+  "listeners_busy": 8,
+  "last_updated": "2024-01-15T10:30:00Z"
+}
+```
 
 ### Get Call Rates
 

@@ -14,11 +14,11 @@ app = FastAPI(
         },
         {
             "name": "User Management", 
-            "description": "User profile management, presence tracking, and administrative functions",
+            "description": "User profile management, presence tracking, favorites, wallet, blocking, verification, and administrative functions",
         },
         {
             "name": "Call Management",
-            "description": "Call management system with coin-based billing, call lifecycle, and real-time status updates",
+            "description": "Call management system with coin-based billing, call lifecycle, transactions, and real-time status updates",
         },
         {
             "name": "WebSocket",

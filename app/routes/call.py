@@ -198,7 +198,7 @@ def calculate_call_cost(call_type: CallType, duration_minutes: int) -> int:
     cost = max(rate_config.minimum_charge, duration_minutes * rate_config.rate_per_minute)
     return cost
 
-@router.post("/calls/start", response_model=StartCallResponse, tags=["Call Management"])
+@router.post("/calls/start", response_model=StartCallResponse)
 async def start_call(data: StartCallRequest, user=Depends(get_current_user_async)):
     """Start a new call with a listener"""
     user_id = user["user_id"]
@@ -290,7 +290,7 @@ async def start_call(data: StartCallRequest, user=Depends(get_current_user_async
             status=CallStatus.ONGOING
         )
 
-@router.post("/calls/end", response_model=EndCallResponse, tags=["Call Management"])
+@router.post("/calls/end", response_model=EndCallResponse)
 async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
     """End an ongoing call"""
     user_id = user["user_id"]
@@ -394,7 +394,7 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
             status=CallStatus.COMPLETED if data.reason != "dropped" else CallStatus.DROPPED
         )
 
-@router.get("/calls/ongoing", response_model=CallInfo, tags=["Call Management"])
+@router.get("/calls/ongoing", response_model=CallInfo)
 async def get_ongoing_call(user=Depends(get_current_user_async)):
     """Get current ongoing call for the user"""
     user_id = user["user_id"]
@@ -415,7 +415,7 @@ async def get_ongoing_call(user=Depends(get_current_user_async)):
         
         return CallInfo(**dict(call))
 
-@router.get("/calls/history", response_model=CallHistoryResponse, tags=["Call Management"])
+@router.get("/calls/history", response_model=CallHistoryResponse)
 async def get_call_history(
     page: int = 1,
     per_page: int = 20,
@@ -506,7 +506,7 @@ async def get_call_history(
             has_previous=page > 1
         )
 
-@router.get("/calls/history/summary", tags=["Call Management"])
+@router.get("/calls/history/summary")
 async def get_call_history_summary(user=Depends(get_current_user_async)):
     """Get call history summary with statistics"""
     user_id = user["user_id"]
@@ -575,7 +575,7 @@ async def get_call_history_summary(user=Depends(get_current_user_async)):
             "monthly_stats": [dict(month) for month in monthly_stats]
         }
 
-@router.get("/calls/balance", response_model=CoinBalanceResponse, tags=["Call Management"])
+@router.get("/calls/balance", response_model=CoinBalanceResponse)
 async def get_coin_balance(user=Depends(get_current_user_async)):
     """Get user's coin balance and spending history"""
     user_id = user["user_id"]
@@ -624,7 +624,7 @@ async def get_coin_balance(user=Depends(get_current_user_async)):
             total_spent=total_spent
         )
 
-@router.post("/calls/emergency-end/{call_id}", response_model=EndCallResponse, tags=["Call Management"])
+@router.post("/calls/emergency-end/{call_id}", response_model=EndCallResponse)
 async def emergency_end_call(call_id: int, user=Depends(get_current_user_async)):
     """Emergency end call (for dropped calls, technical issues, etc.)"""
     user_id = user["user_id"]
@@ -677,7 +677,7 @@ async def emergency_end_call(call_id: int, user=Depends(get_current_user_async))
             status=CallStatus.DROPPED
         )
 
-@router.post("/calls/recharge", response_model=RechargeResponse, tags=["Call Management"])
+@router.post("/calls/recharge", response_model=RechargeResponse)
 async def recharge_coins(data: RechargeRequest, user=Depends(get_current_user_async)):
     """Recharge coins with real money"""
     user_id = user["user_id"]
@@ -735,7 +735,7 @@ async def recharge_coins(data: RechargeRequest, user=Depends(get_current_user_as
             message=f"Successfully recharged {coins_to_add} coins for ₹{data.amount_rupees}"
         )
 
-@router.get("/calls/recharge/history", response_model=RechargeHistoryResponse, tags=["Call Management"])
+@router.get("/calls/recharge/history", response_model=RechargeHistoryResponse)
 async def get_recharge_history(
     page: int = 1,
     per_page: int = 20,
@@ -811,7 +811,7 @@ async def get_recharge_history(
             has_previous=page > 1
         )
 
-@router.post("/calls/bill-minute/{call_id}", tags=["Call Management"])
+@router.post("/calls/bill-minute/{call_id}")
 async def bill_call_minute(call_id: int, user=Depends(get_current_user_async)):
     """Bill for one minute of call (called every minute during call)"""
     user_id = user["user_id"]
@@ -886,13 +886,13 @@ async def bill_call_minute(call_id: int, user=Depends(get_current_user_async)):
             "message": "Successfully billed for 1 minute"
         }
 
-@router.post("/calls/cleanup", tags=["Call Management"])
+@router.post("/calls/cleanup")
 async def cleanup_calls(user=Depends(get_current_user_async)):
     """Manually trigger cleanup of expired calls"""
     await cleanup_expired_calls()
     return {"message": "Call cleanup completed successfully"}
 
-@router.get("/calls/status", tags=["Call Management"])
+@router.get("/calls/status")
 async def get_call_system_status(user=Depends(get_current_user_async)):
     """Get call system status and ongoing calls count"""
     pool = await get_db_pool()
@@ -917,7 +917,7 @@ async def get_call_system_status(user=Depends(get_current_user_async)):
             "system_status": "healthy" if ongoing_calls == redis_calls else "warning"
         }
 
-@router.get("/calls/rates", tags=["Call Management"])
+@router.get("/calls/rates")
 async def get_call_rates():
     """Get current call rates and recharge options"""
     return {
@@ -938,7 +938,7 @@ async def get_call_rates():
         }
     }
 
-@router.get("/transactions/user", response_model=UserTransactionHistoryResponse, tags=["Transaction Management"])
+@router.get("/transactions/user", response_model=UserTransactionHistoryResponse)
 async def get_user_transaction_history(
     page: int = 1,
     per_page: int = 20,
@@ -1048,7 +1048,7 @@ async def get_user_transaction_history(
             has_previous=has_previous
         )
 
-@router.get("/transactions/listener", response_model=ListenerTransactionHistoryResponse, tags=["Transaction Management"])
+@router.get("/transactions/listener", response_model=ListenerTransactionHistoryResponse)
 async def get_listener_transaction_history(
     page: int = 1,
     per_page: int = 20,

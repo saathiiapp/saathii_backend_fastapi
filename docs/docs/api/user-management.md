@@ -304,6 +304,7 @@ const deleteAccount = async (token: string) => {
   });
   return response.json();
 };
+
 ```
 
 ### cURL Examples
@@ -331,6 +332,7 @@ curl -X PUT 'http://localhost:8000/users/me' \
 curl -X DELETE 'http://localhost:8000/users/me' \
   -H 'Authorization: Bearer <access_token>'
 ```
+
 
 ## Best Practices
 
