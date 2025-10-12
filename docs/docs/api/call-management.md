@@ -503,8 +503,8 @@ Get current call rates and recharge options.
       "minimum_charge": 10
     },
     "video": {
-      "rate_per_minute": 50,
-      "minimum_charge": 50
+      "rate_per_minute": 60,
+      "minimum_charge": 60
     }
   },
   "recharge_options": {
@@ -514,8 +514,8 @@ Get current call rates and recharge options.
     "1000": 2000
   },
   "listener_earnings": {
-    "audio": 15,
-    "video": 75
+    "audio": 1,
+    "video": 6
   }
 }
 ```
@@ -584,12 +584,12 @@ sequenceDiagram
 **Audio Calls:**
 - Rate: 10 coins per minute
 - Minimum charge: 10 coins
-- Listener earnings: 15 coins per minute
+- Listener earnings: ₹1 per minute
 
 **Video Calls:**
-- Rate: 50 coins per minute
-- Minimum charge: 50 coins
-- Listener earnings: 75 coins per minute
+- Rate: 60 coins per minute  
+- Minimum charge: 60 coins
+- Listener earnings: ₹6 per minute
 
 ### Billing Process
 

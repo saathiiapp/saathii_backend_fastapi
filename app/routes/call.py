@@ -18,6 +18,7 @@ from app.schemas.call import (
     CallType,
     CallStatus,
     DEFAULT_CALL_RATES,
+    LISTENER_EARNINGS,
     RECHARGE_RATES,
     RechargeRequest,
     RechargeResponse,
@@ -162,7 +163,7 @@ async def cleanup_expired_calls():
         # Find calls that should have ended (busy_until < now)
         expired_calls = await conn.fetch(
             """
-            SELECT call_id, user_id, listener_id 
+            SELECT call_id, user_id, listener_id, call_type, start_time, coins_spent
             FROM user_calls uc
             JOIN user_status us1 ON uc.user_id = us1.user_id
             JOIN user_status us2 ON uc.listener_id = us2.user_id
@@ -174,15 +175,56 @@ async def cleanup_expired_calls():
         for call in expired_calls:
             print(f"🧹 Cleaning up expired call {call['call_id']}")
             
-            # Update call as dropped
+            # Calculate duration and proper settlement
+            start_time = call['start_time']
+            end_time = datetime.utcnow()
+            duration_seconds = int((end_time - start_time).total_seconds())
+            duration_minutes = max(1, duration_seconds // 60)
+            
+            # Calculate proper costs based on actual duration
+            call_type = CallType(call['call_type'])
+            total_cost = calculate_call_cost(call_type, duration_minutes)
+            
+            # Calculate listener earnings based on actual duration
+            listener_rupees_per_minute = LISTENER_EARNINGS[call_type]
+            listener_earnings = listener_rupees_per_minute * duration_minutes
+            
+            # Check if user has already paid enough
+            coins_already_spent = call['coins_spent']
+            additional_cost = total_cost - coins_already_spent
+            
+            # If user needs to pay more, deduct additional coins
+            if additional_cost > 0:
+                current_balance = await get_user_coin_balance(call['user_id'])
+                if current_balance >= additional_cost:
+                    await update_user_coin_balance(call['user_id'], additional_cost, "subtract", "spend")
+                    final_coins_spent = total_cost
+                else:
+                    # User doesn't have enough coins, use what they already paid
+                    final_coins_spent = coins_already_spent
+                    # Recalculate listener earnings based on what user actually paid
+                    actual_duration_paid = coins_already_spent // DEFAULT_CALL_RATES[call_type].rate_per_minute
+                    listener_earnings = listener_rupees_per_minute * actual_duration_paid
+            else:
+                # User has already paid enough or more than needed
+                final_coins_spent = coins_already_spent
+            
+            # Update call as dropped with proper settlement
             await conn.execute(
                 """
                 UPDATE user_calls 
-                SET status = 'dropped', end_time = now(), updated_at = now()
-                WHERE call_id = $1
+                SET end_time = $1, duration_seconds = $2, duration_minutes = $3,
+                    coins_spent = $4, user_money_spend = $4, listener_money_earned = $5,
+                    status = 'dropped', updated_at = now()
+                WHERE call_id = $6
                 """,
-                call['call_id']
+                end_time, duration_seconds, duration_minutes, final_coins_spent, 
+                listener_earnings, call['call_id']
             )
+            
+            # Add earnings to listener
+            if listener_earnings > 0:
+                await update_user_coin_balance(call['listener_id'], listener_earnings, "add", "earn")
             
             # Set both users as not busy
             await update_both_users_presence(call['user_id'], call['listener_id'], False)
@@ -190,7 +232,7 @@ async def cleanup_expired_calls():
             # Remove from Redis
             await redis_client.delete(f"call:{call['call_id']}")
             
-            print(f"✅ Expired call {call['call_id']} cleaned up successfully")
+            print(f"✅ Expired call {call['call_id']} cleaned up successfully - User paid: {final_coins_spent} coins, Listener earned: ₹{listener_earnings}")
 
 def calculate_call_cost(call_type: CallType, duration_minutes: int) -> int:
     """Calculate call cost based on type and duration"""
@@ -355,11 +397,10 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
             # Deduct additional cost
             await update_user_coin_balance(user_id, additional_cost, "subtract", "spend")
         
-        # Calculate listener earnings (1.5x the rate per minute)
+        # Calculate listener earnings in rupees per minute
         call_type = CallType(call['call_type'])
-        rate_per_minute = DEFAULT_CALL_RATES[call_type].rate_per_minute
-        listener_rate_per_minute = int(rate_per_minute * 1.5)
-        listener_earnings = listener_rate_per_minute * duration_minutes
+        listener_rupees_per_minute = LISTENER_EARNINGS[call_type]
+        listener_earnings = listener_rupees_per_minute * duration_minutes
         
         # Update call record
         await conn.execute(
@@ -649,16 +690,50 @@ async def emergency_end_call(call_id: int, user=Depends(get_current_user_async))
         duration_seconds = int((end_time - start_time).total_seconds())
         duration_minutes = max(1, duration_seconds // 60)
         
-        # Update call as dropped
+        # Calculate proper costs based on actual duration
+        call_type = CallType(call['call_type'])
+        total_cost = calculate_call_cost(call_type, duration_minutes)
+        
+        # Calculate listener earnings based on actual duration
+        listener_rupees_per_minute = LISTENER_EARNINGS[call_type]
+        listener_earnings = listener_rupees_per_minute * duration_minutes
+        
+        # Check if user has already paid enough
+        coins_already_spent = call['coins_spent']
+        additional_cost = total_cost - coins_already_spent
+        
+        # If user needs to pay more, deduct additional coins
+        if additional_cost > 0:
+            current_balance = await get_user_coin_balance(user_id)
+            if current_balance >= additional_cost:
+                await update_user_coin_balance(user_id, additional_cost, "subtract", "spend")
+                final_coins_spent = total_cost
+            else:
+                # User doesn't have enough coins, use what they already paid
+                final_coins_spent = coins_already_spent
+                # Recalculate listener earnings based on what user actually paid
+                actual_duration_paid = coins_already_spent // DEFAULT_CALL_RATES[call_type].rate_per_minute
+                listener_earnings = listener_rupees_per_minute * actual_duration_paid
+        else:
+            # User has already paid enough or more than needed
+            final_coins_spent = coins_already_spent
+        
+        # Update call record with proper settlement
         await conn.execute(
             """
             UPDATE user_calls 
             SET end_time = $1, duration_seconds = $2, duration_minutes = $3,
+                coins_spent = $4, user_money_spend = $4, listener_money_earned = $5,
                 status = 'dropped', updated_at = now()
-            WHERE call_id = $4
+            WHERE call_id = $6
             """,
-            end_time, duration_seconds, duration_minutes, call_id
+            end_time, duration_seconds, duration_minutes, final_coins_spent, 
+            listener_earnings, call_id
         )
+        
+        # Add earnings to listener
+        if listener_earnings > 0:
+            await update_user_coin_balance(call['listener_id'], listener_earnings, "add", "earn")
         
         # Set both users as not busy
         await update_both_users_presence(call['user_id'], call['listener_id'], False)
@@ -671,9 +746,9 @@ async def emergency_end_call(call_id: int, user=Depends(get_current_user_async))
             message="Call ended due to technical issues",
             duration_seconds=duration_seconds,
             duration_minutes=duration_minutes,
-            coins_spent=call['coins_spent'],
-            user_money_spend=call['user_money_spend'],
-            listener_money_earned=0,
+            coins_spent=final_coins_spent,
+            user_money_spend=final_coins_spent,
+            listener_money_earned=listener_earnings,
             status=CallStatus.DROPPED
         )
 
@@ -933,8 +1008,8 @@ async def get_call_rates():
         },
         "recharge_options": RECHARGE_RATES,
         "listener_earnings": {
-            "audio": int(DEFAULT_CALL_RATES[CallType.AUDIO].rate_per_minute * 1.5),
-            "video": int(DEFAULT_CALL_RATES[CallType.VIDEO].rate_per_minute * 1.5)
+            "audio": LISTENER_EARNINGS[CallType.AUDIO],
+            "video": LISTENER_EARNINGS[CallType.VIDEO]
         }
     }
 

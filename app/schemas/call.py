@@ -87,12 +87,18 @@ DEFAULT_CALL_RATES = {
     ),
     CallType.VIDEO: CallRateConfig(
         call_type=CallType.VIDEO,
-        rate_per_minute=50,
-        minimum_charge=50  # 1 minute minimum
+        rate_per_minute=60,
+        minimum_charge=60  # 1 minute minimum
     )
 }
 
-# Recharge rates
+# Listener earnings in rupees per minute
+LISTENER_EARNINGS = {
+    CallType.AUDIO: 1,  # 1 rupee per minute
+    CallType.VIDEO: 6   # 6 rupees per minute
+}
+
+# Recharge rates (rupees to coins conversion)
 RECHARGE_RATES = {
     "150": 300,  # 150 rupees = 300 coins
     "300": 600,  # 300 rupees = 600 coins
