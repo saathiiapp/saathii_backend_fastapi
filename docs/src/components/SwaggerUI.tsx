@@ -7,7 +7,7 @@ interface SwaggerUIProps {
 }
 
 const SwaggerUI: React.FC<SwaggerUIProps> = ({ 
-  url = 'https://saathiiapp.com/docs',
+  url = 'https://saathiiapp.com/openapi.json',
   height = '600px'
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -15,10 +15,9 @@ const SwaggerUI: React.FC<SwaggerUIProps> = ({
 
   useEffect(() => {
     if (iframeRef.current) {
-      // Add theme parameter based on color mode
-      const themeParam = colorMode === 'dark' ? '&theme=dark' : '';
-      const fullUrl = `${url}${themeParam}`;
-      iframeRef.current.src = fullUrl;
+      // Create Swagger UI URL with the OpenAPI JSON schema
+      const swaggerUIUrl = `https://petstore.swagger.io/?url=${encodeURIComponent(url)}`;
+      iframeRef.current.src = swaggerUIUrl;
     }
   }, [url, colorMode]);
 

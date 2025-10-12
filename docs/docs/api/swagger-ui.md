@@ -10,7 +10,7 @@ Use the interactive Swagger UI below to explore and test the Saathii Backend API
 
 import SwaggerUI from '@site/src/components/SwaggerUI';
 
-<SwaggerUI url="https://saathiiapp.com/docs" height="800px" />
+<SwaggerUI url="https://saathiiapp.com/openapi.json" height="800px" />
 
 ## How to Use
 

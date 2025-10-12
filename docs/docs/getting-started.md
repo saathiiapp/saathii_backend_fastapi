@@ -80,8 +80,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Once the server is running, you can access:
 
-- **API Documentation**: https://saathiiapp.com/docs
-- **ReDoc Documentation**: https://saathiiapp.com/redoc
+- **Swagger API Documentation**: https://saathiiapp.com/docs
+- **ReDoc API Documentation**: https://saathiiapp.com/redoc
 - **API Base URL**: https://saathiiapp.com
 - **WebSocket**: wss://saathiiapp.com
 
@@ -203,8 +203,7 @@ If you need file upload functionality:
 
 ## 🆘 Need Help?
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/saathii/saathii-backend-api/issues)
-- **Discussions**: [Ask questions](https://github.com/saathii/saathii-backend-api/discussions)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/saathiiapp/saathii_backend_fastapi/issues)
 - **Documentation**: Browse the comprehensive guides and API reference
 
 ---
