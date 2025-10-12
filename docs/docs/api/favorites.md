@@ -201,7 +201,7 @@ Authorization: Bearer <access_token>
 ```typescript
 // Add to favorites
 const addFavorite = async (token: string, listenerId: number) => {
-  const response = await fetch('http://localhost:8000/favorites/add', {
+  const response = await fetch('https://saathiiapp.com/favorites/add', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -214,7 +214,7 @@ const addFavorite = async (token: string, listenerId: number) => {
 
 // Remove from favorites
 const removeFavorite = async (token: string, listenerId: number) => {
-  const response = await fetch('http://localhost:8000/favorites/remove', {
+  const response = await fetch('https://saathiiapp.com/favorites/remove', {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -227,7 +227,7 @@ const removeFavorite = async (token: string, listenerId: number) => {
 
 // Get favorites list
 const getFavorites = async (token: string, page: number = 1) => {
-  const response = await fetch(`http://localhost:8000/favorites?page=${page}&per_page=20`, {
+  const response = await fetch(`https://saathiiapp.com/favorites?page=${page}&per_page=20`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -238,7 +238,7 @@ const getFavorites = async (token: string, page: number = 1) => {
 
 // Check favorite status
 const checkFavoriteStatus = async (token: string, listenerId: number) => {
-  const response = await fetch(`http://localhost:8000/favorites/check/${listenerId}`, {
+  const response = await fetch(`https://saathiiapp.com/favorites/check/${listenerId}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -252,7 +252,7 @@ const checkFavoriteStatus = async (token: string, listenerId: number) => {
 
 **Add Favorite:**
 ```bash
-curl -X POST 'http://localhost:8000/favorites/add' \
+curl -X POST 'https://saathiiapp.com/favorites/add' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -262,7 +262,7 @@ curl -X POST 'http://localhost:8000/favorites/add' \
 
 **Remove Favorite:**
 ```bash
-curl -X DELETE 'http://localhost:8000/favorites/remove' \
+curl -X DELETE 'https://saathiiapp.com/favorites/remove' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -272,13 +272,13 @@ curl -X DELETE 'http://localhost:8000/favorites/remove' \
 
 **Get Favorites:**
 ```bash
-curl -X GET 'http://localhost:8000/favorites?page=1&per_page=20' \
+curl -X GET 'https://saathiiapp.com/favorites?page=1&per_page=20' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Check Favorite Status:**
 ```bash
-curl -X GET 'http://localhost:8000/favorites/check/123' \
+curl -X GET 'https://saathiiapp.com/favorites/check/123' \
   -H 'Authorization: Bearer <access_token>'
 ```
 

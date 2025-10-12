@@ -35,9 +35,9 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 ## Base URL
 
-- **Local Development**: `http://localhost:8000`
-- **WebSocket**: `ws://localhost:8000`
-- **API Documentation**: `http://localhost:8000/docs`
+- **API Base URL**: `https://saathiiapp.com`
+- **WebSocket**: `wss://saathiiapp.com`
+- **API Documentation**: `https://saathiiapp.com/docs`
 
 ## Authentication
 

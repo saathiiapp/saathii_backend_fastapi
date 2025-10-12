@@ -219,7 +219,7 @@ Authorization: Bearer <access_token>
 ```typescript
 // Block user
 const blockUser = async (token: string, userId: number, reason?: string) => {
-  const response = await fetch('http://localhost:8000/block', {
+  const response = await fetch('https://saathiiapp.com/block', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -236,7 +236,7 @@ const blockUser = async (token: string, userId: number, reason?: string) => {
 
 // Unblock user
 const unblockUser = async (token: string, userId: number) => {
-  const response = await fetch('http://localhost:8000/block', {
+  const response = await fetch('https://saathiiapp.com/block', {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -249,7 +249,7 @@ const unblockUser = async (token: string, userId: number) => {
 
 // Get blocked users
 const getBlockedUsers = async (token: string, page: number = 1) => {
-  const response = await fetch(`http://localhost:8000/blocked?page=${page}&per_page=20`, {
+  const response = await fetch(`https://saathiiapp.com/blocked?page=${page}&per_page=20`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -260,7 +260,7 @@ const getBlockedUsers = async (token: string, page: number = 1) => {
 
 // Check block status
 const checkBlockStatus = async (token: string, userId: number) => {
-  const response = await fetch(`http://localhost:8000/block/check/${userId}`, {
+  const response = await fetch(`https://saathiiapp.com/block/check/${userId}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -274,7 +274,7 @@ const checkBlockStatus = async (token: string, userId: number) => {
 
 **Block User:**
 ```bash
-curl -X POST 'http://localhost:8000/block' \
+curl -X POST 'https://saathiiapp.com/block' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -286,7 +286,7 @@ curl -X POST 'http://localhost:8000/block' \
 
 **Unblock User:**
 ```bash
-curl -X DELETE 'http://localhost:8000/block' \
+curl -X DELETE 'https://saathiiapp.com/block' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -296,13 +296,13 @@ curl -X DELETE 'http://localhost:8000/block' \
 
 **Get Blocked Users:**
 ```bash
-curl -X GET 'http://localhost:8000/blocked?page=1&per_page=20' \
+curl -X GET 'https://saathiiapp.com/blocked?page=1&per_page=20' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Check Block Status:**
 ```bash
-curl -X GET 'http://localhost:8000/block/check/123' \
+curl -X GET 'https://saathiiapp.com/block/check/123' \
   -H 'Authorization: Bearer <access_token>'
 ```
 

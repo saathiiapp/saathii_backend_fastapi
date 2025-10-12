@@ -369,13 +369,13 @@ export default new VerificationService();
 
 ```bash
 # Upload audio file
-curl -X POST "http://localhost:8000/verification/upload-audio-file" \
+curl -X POST "https://saathiiapp.com/verification/upload-audio-file" \
   -H "Authorization: Bearer <access_token>" \
   -F "audio_file=@/path/to/audio.mp3" \
   -F "description=Verification audio sample"
 
 # Upload audio URL
-curl -X POST "http://localhost:8000/verification/upload-audio-url" \
+curl -X POST "https://saathiiapp.com/verification/upload-audio-url" \
   -H "Authorization: Bearer <access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -384,19 +384,19 @@ curl -X POST "http://localhost:8000/verification/upload-audio-url" \
   }'
 
 # Get verification status
-curl -X GET "http://localhost:8000/verification/status" \
+curl -X GET "https://saathiiapp.com/verification/status" \
   -H "Authorization: Bearer <access_token>"
 
 # Get verification history
-curl -X GET "http://localhost:8000/verification/history" \
+curl -X GET "https://saathiiapp.com/verification/history" \
   -H "Authorization: Bearer <access_token>"
 
 # Get pending verifications (Admin)
-curl -X GET "http://localhost:8000/admin/verification/pending" \
+curl -X GET "https://saathiiapp.com/admin/verification/pending" \
   -H "Authorization: Bearer <admin_token>"
 
 # Review verification (Admin)
-curl -X POST "http://localhost:8000/admin/verification/review" \
+curl -X POST "https://saathiiapp.com/admin/verification/review" \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{

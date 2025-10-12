@@ -226,7 +226,7 @@ const getUserTransactions = async (token: string, page: number = 1, txType?: str
     params.append('tx_type', txType);
   }
   
-  const response = await fetch(`http://localhost:8000/transactions/user?${params}`, {
+  const response = await fetch(`https://saathiiapp.com/transactions/user?${params}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -242,7 +242,7 @@ const getListenerTransactions = async (token: string, page: number = 1) => {
     per_page: '20'
   });
   
-  const response = await fetch(`http://localhost:8000/transactions/listener?${params}`, {
+  const response = await fetch(`https://saathiiapp.com/transactions/listener?${params}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -256,19 +256,19 @@ const getListenerTransactions = async (token: string, page: number = 1) => {
 
 **Get User Transactions:**
 ```bash
-curl -X GET 'http://localhost:8000/transactions/user?page=1&per_page=20' \
+curl -X GET 'https://saathiiapp.com/transactions/user?page=1&per_page=20' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Get User Transactions (Filtered):**
 ```bash
-curl -X GET 'http://localhost:8000/transactions/user?page=1&per_page=20&tx_type=spend' \
+curl -X GET 'https://saathiiapp.com/transactions/user?page=1&per_page=20&tx_type=spend' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Get Listener Transactions:**
 ```bash
-curl -X GET 'http://localhost:8000/transactions/listener?page=1&per_page=20' \
+curl -X GET 'https://saathiiapp.com/transactions/listener?page=1&per_page=20' \
   -H 'Authorization: Bearer <access_token>'
 ```
 

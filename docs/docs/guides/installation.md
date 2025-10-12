@@ -186,9 +186,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Open your browser and navigate to:
 
-- **API Documentation**: http://localhost:8000/docs
-- **ReDoc Documentation**: http://localhost:8000/redoc
-- **Health Check**: http://localhost:8000/health
+- **API Documentation**: https://saathiiapp.com/docs
+- **ReDoc Documentation**: https://saathiiapp.com/redoc
+- **API Base URL**: https://saathiiapp.com
+- **WebSocket**: wss://saathiiapp.com
 
 You should see the Swagger UI with all available endpoints.
 
@@ -215,8 +216,10 @@ docker-compose down
 
 ### 3. Access the Application
 
-- **API**: http://localhost:8000
-- **Documentation**: http://localhost:8000/docs
+- **API Base URL**: https://saathiiapp.com
+- **API Documentation**: https://saathiiapp.com/docs
+- **ReDoc Documentation**: https://saathiiapp.com/redoc
+- **WebSocket**: wss://saathiiapp.com
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
 

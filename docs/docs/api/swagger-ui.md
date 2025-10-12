@@ -113,8 +113,8 @@ To use the interactive API explorer:
 - `POST /admin/verification/review` - Review verification (Admin)
 
 ### 🔌 WebSocket
-- `ws://localhost:8000/ws/feed` - Real-time feed updates
-- `ws://localhost:8000/ws/presence` - Real-time presence updates
+- `wss://saathiiapp.com/ws/feed` - Real-time feed updates
+- `wss://saathiiapp.com/ws/presence` - Real-time presence updates
 
 ## Tips for Testing
 
@@ -169,7 +169,7 @@ Be aware of the following rate limits:
 
 ## Production vs Development
 
-- **Development**: Uses `http://localhost:8000`
+- **Development**: Uses `https://saathiiapp.com`
 - **Production**: Uses `https://saathiiapp.com`
 - **HTTPS**: Always use HTTPS in production
 - **CORS**: Configured for production domain

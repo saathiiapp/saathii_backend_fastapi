@@ -80,10 +80,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Once the server is running, you can access:
 
-- **API Documentation**: http://localhost:8000/docs
-- **ReDoc Documentation**: http://localhost:8000/redoc
-- **API Base URL**: http://localhost:8000
-- **WebSocket**: ws://localhost:8000
+- **API Documentation**: https://saathiiapp.com/docs
+- **ReDoc Documentation**: https://saathiiapp.com/redoc
+- **API Base URL**: https://saathiiapp.com
+- **WebSocket**: wss://saathiiapp.com
 
 ## 🔧 Configuration
 
@@ -184,12 +184,12 @@ If you need file upload functionality:
 - `POST /admin/verification/review` - Review verification (Admin)
 
 ### 🔌 WebSocket
-- `ws://localhost:8000/ws/feed` - Real-time feed updates
-- `ws://localhost:8000/ws/presence` - Real-time presence updates
+- `wss://saathiiapp.com/ws/feed` - Real-time feed updates
+- `wss://saathiiapp.com/ws/presence` - Real-time presence updates
 
 ## 🚀 Next Steps
 
-1. **Explore the API**: Check out the [Swagger UI](http://localhost:8000/docs) to interact with the API
+1. **Explore the API**: Check out the [Swagger UI](https://saathiiapp.com/docs) to interact with the API
 2. **Read the Guides**: Follow our [integration guides](./guides/installation) for specific use cases
 3. **View Examples**: See [API examples](./guides/api-examples) for common operations
 4. **React Native Integration**: Learn how to integrate with [React Native apps](./guides/react-native-integration)

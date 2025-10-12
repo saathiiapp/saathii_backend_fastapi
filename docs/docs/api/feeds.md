@@ -246,7 +246,7 @@ const getListenersFeed = async (token: string, filters: any = {}) => {
   if (filters.interests) params.append('interests', filters.interests.join(','));
   if (filters.language) params.append('language', filters.language);
   
-  const response = await fetch(`http://localhost:8000/feed/listeners?${params}`, {
+  const response = await fetch(`https://saathiiapp.com/feed/listeners?${params}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -257,7 +257,7 @@ const getListenersFeed = async (token: string, filters: any = {}) => {
 
 // Get feed statistics
 const getFeedStats = async (token: string) => {
-  const response = await fetch('http://localhost:8000/feed/stats', {
+  const response = await fetch('https://saathiiapp.com/feed/stats', {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -271,19 +271,19 @@ const getFeedStats = async (token: string) => {
 
 **Get Listeners Feed:**
 ```bash
-curl -X GET 'http://localhost:8000/feed/listeners?page=1&per_page=20&online_only=true' \
+curl -X GET 'https://saathiiapp.com/feed/listeners?page=1&per_page=20&online_only=true' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Get Feed with Filters:**
 ```bash
-curl -X GET 'http://localhost:8000/feed/listeners?sex=female&min_rating=4.0&interests=music,tech' \
+curl -X GET 'https://saathiiapp.com/feed/listeners?sex=female&min_rating=4.0&interests=music,tech' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Get Feed Statistics:**
 ```bash
-curl -X GET 'http://localhost:8000/feed/stats' \
+curl -X GET 'https://saathiiapp.com/feed/stats' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
@@ -294,7 +294,7 @@ curl -X GET 'http://localhost:8000/feed/stats' \
 Connect to the WebSocket endpoint for real-time feed updates:
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8000/ws/feed?token=<access_token>');
+const ws = new WebSocket('wss://saathiiapp.com/ws/feed?token=<access_token>');
 
 ws.onopen = () => {
   console.log('Connected to feed updates');

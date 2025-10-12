@@ -288,7 +288,7 @@ Authorization: Bearer <access_token>
 ```typescript
 // Get wallet balance
 const getWalletBalance = async (token: string) => {
-  const response = await fetch('http://localhost:8000/wallet/balance', {
+  const response = await fetch('https://saathiiapp.com/wallet/balance', {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -299,7 +299,7 @@ const getWalletBalance = async (token: string) => {
 
 // Add coins to wallet
 const addCoins = async (token: string, coins: number, txType: string = 'purchase', moneyAmount: number = 0) => {
-  const response = await fetch('http://localhost:8000/wallet/add-coins', {
+  const response = await fetch('https://saathiiapp.com/wallet/add-coins', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -316,7 +316,7 @@ const addCoins = async (token: string, coins: number, txType: string = 'purchase
 
 // Request withdrawal
 const requestWithdrawal = async (token: string, amount: number) => {
-  const response = await fetch('http://localhost:8000/wallet/withdraw', {
+  const response = await fetch('https://saathiiapp.com/wallet/withdraw', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -332,13 +332,13 @@ const requestWithdrawal = async (token: string, amount: number) => {
 
 **Get Wallet Balance:**
 ```bash
-curl -X GET 'http://localhost:8000/wallet/balance' \
+curl -X GET 'https://saathiiapp.com/wallet/balance' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Add Coins:**
 ```bash
-curl -X POST 'http://localhost:8000/wallet/add-coins' \
+curl -X POST 'https://saathiiapp.com/wallet/add-coins' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -350,7 +350,7 @@ curl -X POST 'http://localhost:8000/wallet/add-coins' \
 
 **Request Withdrawal:**
 ```bash
-curl -X POST 'http://localhost:8000/wallet/withdraw' \
+curl -X POST 'https://saathiiapp.com/wallet/withdraw' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{

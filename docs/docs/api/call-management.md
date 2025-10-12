@@ -651,7 +651,7 @@ sequenceDiagram
 ```typescript
 // Start call
 const startCall = async (token: string, listenerId: number, callType: string) => {
-  const response = await fetch('http://localhost:8000/calls/start', {
+  const response = await fetch('https://saathiiapp.com/calls/start', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -668,7 +668,7 @@ const startCall = async (token: string, listenerId: number, callType: string) =>
 
 // End call
 const endCall = async (token: string, callId: number, reason: string) => {
-  const response = await fetch('http://localhost:8000/calls/end', {
+  const response = await fetch('https://saathiiapp.com/calls/end', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -691,7 +691,7 @@ const getCallHistory = async (token: string, filters: any) => {
     }
   });
 
-  const response = await fetch(`http://localhost:8000/calls/history?${params}`, {
+  const response = await fetch(`https://saathiiapp.com/calls/history?${params}`, {
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -701,7 +701,7 @@ const getCallHistory = async (token: string, filters: any) => {
 
 // Recharge coins
 const rechargeCoins = async (token: string, amountRupees: number) => {
-  const response = await fetch('http://localhost:8000/calls/recharge', {
+  const response = await fetch('https://saathiiapp.com/calls/recharge', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -720,7 +720,7 @@ const rechargeCoins = async (token: string, amountRupees: number) => {
 
 **Start Call:**
 ```bash
-curl -X POST 'http://localhost:8000/calls/start' \
+curl -X POST 'https://saathiiapp.com/calls/start' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -732,7 +732,7 @@ curl -X POST 'http://localhost:8000/calls/start' \
 
 **End Call:**
 ```bash
-curl -X POST 'http://localhost:8000/calls/end' \
+curl -X POST 'https://saathiiapp.com/calls/end' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -743,13 +743,13 @@ curl -X POST 'http://localhost:8000/calls/end' \
 
 **Get Call History:**
 ```bash
-curl -X GET 'http://localhost:8000/calls/history?page=1&per_page=10&call_type=audio' \
+curl -X GET 'https://saathiiapp.com/calls/history?page=1&per_page=10&call_type=audio' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Recharge Coins:**
 ```bash
-curl -X POST 'http://localhost:8000/calls/recharge' \
+curl -X POST 'https://saathiiapp.com/calls/recharge' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{

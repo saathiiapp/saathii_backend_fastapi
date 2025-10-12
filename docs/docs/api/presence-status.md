@@ -341,25 +341,25 @@ export default new PresenceService();
 
 ```bash
 # Get my status
-curl -X GET "http://localhost:8000/users/me/status" \
+curl -X GET "https://saathiiapp.com/users/me/status" \
   -H "Authorization: Bearer <access_token>"
 
 # Update my status
-curl -X PUT "http://localhost:8000/users/me/status" \
+curl -X PUT "https://saathiiapp.com/users/me/status" \
   -H "Authorization: Bearer <access_token>" \
   -H "Content-Type: application/json" \
   -d '{"is_online": true, "is_busy": false}'
 
 # Send heartbeat
-curl -X POST "http://localhost:8000/users/me/heartbeat" \
+curl -X POST "https://saathiiapp.com/users/me/heartbeat" \
   -H "Authorization: Bearer <access_token>"
 
 # Get user presence
-curl -X GET "http://localhost:8000/users/456/presence" \
+curl -X GET "https://saathiiapp.com/users/456/presence" \
   -H "Authorization: Bearer <access_token>"
 
 # Get multiple users presence
-curl -X GET "http://localhost:8000/users/presence?user_ids=123,456,789" \
+curl -X GET "https://saathiiapp.com/users/presence?user_ids=123,456,789" \
   -H "Authorization: Bearer <access_token>"
 ```
 

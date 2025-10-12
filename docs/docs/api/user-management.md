@@ -272,7 +272,7 @@ Users with the "admin" role can:
 ```typescript
 // Get current user
 const getCurrentUser = async (token: string) => {
-  const response = await fetch('http://localhost:8000/users/me', {
+  const response = await fetch('https://saathiiapp.com/users/me', {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -283,7 +283,7 @@ const getCurrentUser = async (token: string) => {
 
 // Update user profile
 const updateProfile = async (token: string, updates: any) => {
-  const response = await fetch('http://localhost:8000/users/me', {
+  const response = await fetch('https://saathiiapp.com/users/me', {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -296,7 +296,7 @@ const updateProfile = async (token: string, updates: any) => {
 
 // Delete user account
 const deleteAccount = async (token: string) => {
-  const response = await fetch('http://localhost:8000/users/me', {
+  const response = await fetch('https://saathiiapp.com/users/me', {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -311,13 +311,13 @@ const deleteAccount = async (token: string) => {
 
 **Get Current User:**
 ```bash
-curl -X GET 'http://localhost:8000/users/me' \
+curl -X GET 'https://saathiiapp.com/users/me' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
 **Update Profile:**
 ```bash
-curl -X PUT 'http://localhost:8000/users/me' \
+curl -X PUT 'https://saathiiapp.com/users/me' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -329,7 +329,7 @@ curl -X PUT 'http://localhost:8000/users/me' \
 
 **Delete Account:**
 ```bash
-curl -X DELETE 'http://localhost:8000/users/me' \
+curl -X DELETE 'https://saathiiapp.com/users/me' \
   -H 'Authorization: Bearer <access_token>'
 ```
 

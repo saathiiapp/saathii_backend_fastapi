@@ -310,7 +310,7 @@ sequenceDiagram
 ```typescript
 // Request OTP
 const requestOTP = async (phone: string) => {
-  const response = await fetch('http://localhost:8000/auth/request_otp', {
+  const response = await fetch('https://saathiiapp.com/auth/request_otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone })
@@ -320,7 +320,7 @@ const requestOTP = async (phone: string) => {
 
 // Verify OTP
 const verifyOTP = async (phone: string, otp: string) => {
-  const response = await fetch('http://localhost:8000/auth/verify', {
+  const response = await fetch('https://saathiiapp.com/auth/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone, otp })
@@ -333,21 +333,21 @@ const verifyOTP = async (phone: string, otp: string) => {
 
 **Request OTP:**
 ```bash
-curl -X POST 'http://localhost:8000/auth/request_otp' \
+curl -X POST 'https://saathiiapp.com/auth/request_otp' \
   -H 'Content-Type: application/json' \
   -d '{"phone":"+919876543210"}'
 ```
 
 **Verify OTP:**
 ```bash
-curl -X POST 'http://localhost:8000/auth/verify' \
+curl -X POST 'https://saathiiapp.com/auth/verify' \
   -H 'Content-Type: application/json' \
   -d '{"phone":"+919876543210","otp":"123456"}'
 ```
 
 **Register User:**
 ```bash
-curl -X POST 'http://localhost:8000/auth/register' \
+curl -X POST 'https://saathiiapp.com/auth/register' \
   -H 'Content-Type: application/json' \
   -d '{
     "registration_token":"...",
@@ -360,14 +360,14 @@ curl -X POST 'http://localhost:8000/auth/register' \
 
 **Refresh Token:**
 ```bash
-curl -X POST 'http://localhost:8000/auth/refresh' \
+curl -X POST 'https://saathiiapp.com/auth/refresh' \
   -H 'Content-Type: application/json' \
   -d '{"refresh_token":"..."}'
 ```
 
 **Logout:**
 ```bash
-curl -X POST 'http://localhost:8000/auth/logout' \
+curl -X POST 'https://saathiiapp.com/auth/logout' \
   -H 'Authorization: Bearer <access_token>'
 ```
 
