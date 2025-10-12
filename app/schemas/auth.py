@@ -16,14 +16,6 @@ class OTPRequest(BaseModel):
 class VerifyRequest(BaseModel):
     phone: str
     otp: str
-    username: Optional[str] = None
-    sex: Optional[SexEnum] = None
-    dob: Optional[date] = None
-    bio: Optional[str] = None
-    interests: Optional[List[str]] = None
-    profile_image_url: Optional[str] = None
-    preferred_language: Optional[str] = None
-    role: Optional[str] = None
 
 
 class TokenPairResponse(BaseModel):
