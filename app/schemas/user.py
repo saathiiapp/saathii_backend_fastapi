@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 
 
@@ -31,3 +31,32 @@ class EditUserRequest(BaseModel):
     interests: Optional[List[str]] = None
     profile_image_url: Optional[str] = None
     preferred_language: Optional[str] = None
+
+
+# Status-related schemas
+class UserStatusResponse(BaseModel):
+    user_id: int
+    is_online: bool
+    last_seen: datetime
+    is_busy: bool
+    busy_until: Optional[datetime] = None
+
+
+class UpdateStatusRequest(BaseModel):
+    is_online: Optional[bool] = None
+    is_busy: Optional[bool] = None
+    busy_until: Optional[datetime] = None
+
+
+class HeartbeatRequest(BaseModel):
+    # Empty body - just a ping to update last_seen
+    pass
+
+
+class UserPresenceResponse(BaseModel):
+    user_id: int
+    username: Optional[str] = None
+    is_online: bool
+    last_seen: datetime
+    is_busy: bool
+    busy_until: Optional[datetime] = None

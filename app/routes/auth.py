@@ -75,6 +75,16 @@ async def verify_otp(data: VerifyRequest):
             reg_token = create_registration_token({"phone": data.phone})
             return VerifyResponse(status="needs_registration", registration_token=reg_token)
 
+        # Set user online when they log in
+        await conn.execute(
+            """
+            UPDATE user_status 
+            SET is_online = TRUE, last_seen = now(), updated_at = now()
+            WHERE user_id = $1
+            """,
+            user["user_id"]
+        )
+
         subject = {"user_id": user["user_id"], "phone": user["phone"]}
         access_token = create_access_token(subject)
         refresh_token = create_refresh_token(subject)
@@ -124,6 +134,18 @@ async def register_user(data: RegisterRequest):
                 user["user_id"],
                 data.role,
             )
+
+        # Create user status record (user starts online after registration)
+        await conn.execute(
+            """
+            INSERT INTO user_status (user_id, is_online, last_seen, is_busy, updated_at, created_at)
+            VALUES ($1, $2, $3, $4, now(), now())
+            """,
+            user["user_id"],
+            True,  # is_online - user is online after registration
+            "now()",  # last_seen
+            False,  # is_busy
+        )
 
     subject = {"user_id": user["user_id"], "phone": user["phone"]}
     access_token = create_access_token(subject)
@@ -195,4 +217,17 @@ async def logout(authorization: str = Header(...)):
     pattern = f"refresh:{user_id}:*"
     async for key in redis_client.scan_iter(match=pattern):
         await redis_client.delete(key)
+    
+    # Set user offline when they log out
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE user_status 
+            SET is_online = FALSE, last_seen = now(), updated_at = now()
+            WHERE user_id = $1
+            """,
+            user_id
+        )
+    
     return {"message": "Logged out"}

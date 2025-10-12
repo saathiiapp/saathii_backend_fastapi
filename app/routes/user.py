@@ -1,9 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
+from typing import List
 import time
 from app.clients.redis_client import redis_client
 from app.clients.db import get_db_pool
 from app.clients.jwt_handler import decode_jwt
-from app.schemas.user import UserResponse, EditUserRequest
+from app.utils.presence import mark_inactive_users_offline, cleanup_expired_busy_status
+from app.schemas.user import (
+    UserResponse, 
+    EditUserRequest, 
+    UserStatusResponse, 
+    UpdateStatusRequest, 
+    HeartbeatRequest, 
+    UserPresenceResponse
+)
 
 router = APIRouter()
 
@@ -100,3 +109,162 @@ async def delete_me(authorization: str = Header(...), user=Depends(get_current_u
             await redis_client.setex(f"access:{user['user_id']}:{jti}", ttl_seconds, "1")
 
     return {"message": "User deleted"}
+
+
+# Status/Presence endpoints for React Native
+@router.get("/users/me/status", response_model=UserStatusResponse)
+async def get_my_status(user=Depends(get_current_user_async)):
+    """Get current user's online status"""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        status = await conn.fetchrow(
+            "SELECT * FROM user_status WHERE user_id = $1",
+            user["user_id"]
+        )
+        if not status:
+            raise HTTPException(status_code=404, detail="User status not found")
+        return dict(status)
+
+
+@router.put("/users/me/status", response_model=UserStatusResponse)
+async def update_my_status(data: UpdateStatusRequest, user=Depends(get_current_user_async)):
+    """Update current user's online status (online/offline, busy status)"""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Build dynamic update query
+        updates = []
+        params = [user["user_id"]]
+        param_count = 1
+        
+        if data.is_online is not None:
+            param_count += 1
+            updates.append(f"is_online = ${param_count}")
+            params.append(data.is_online)
+            
+        if data.is_busy is not None:
+            param_count += 1
+            updates.append(f"is_busy = ${param_count}")
+            params.append(data.is_busy)
+            
+        if data.busy_until is not None:
+            param_count += 1
+            updates.append(f"busy_until = ${param_count}")
+            params.append(data.busy_until)
+        
+        # Always update last_seen and updated_at
+        param_count += 1
+        updates.append(f"last_seen = ${param_count}")
+        params.append("now()")
+        
+        param_count += 1
+        updates.append(f"updated_at = ${param_count}")
+        params.append("now()")
+        
+        if not updates:
+            raise HTTPException(status_code=400, detail="No status fields to update")
+            
+        query = f"""
+            UPDATE user_status 
+            SET {', '.join(updates)}
+            WHERE user_id = $1
+            RETURNING *
+        """
+        
+        status = await conn.fetchrow(query, *params)
+        if not status:
+            raise HTTPException(status_code=404, detail="User status not found")
+        return dict(status)
+
+
+@router.post("/users/me/heartbeat")
+async def heartbeat(user=Depends(get_current_user_async)):
+    """Send heartbeat to keep user online and update last_seen"""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE user_status 
+            SET last_seen = now(), updated_at = now()
+            WHERE user_id = $1
+            """,
+            user["user_id"]
+        )
+    return {"message": "Heartbeat received"}
+
+
+@router.get("/users/{user_id}/presence", response_model=UserPresenceResponse)
+async def get_user_presence(user_id: int, user=Depends(get_current_user_async)):
+    """Get another user's presence status"""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        presence = await conn.fetchrow(
+            """
+            SELECT 
+                us.user_id,
+                u.username,
+                us.is_online,
+                us.last_seen,
+                us.is_busy,
+                us.busy_until
+            FROM user_status us
+            JOIN users u ON us.user_id = u.user_id
+            WHERE us.user_id = $1
+            """,
+            user_id
+        )
+        if not presence:
+            raise HTTPException(status_code=404, detail="User not found")
+        return dict(presence)
+
+
+@router.get("/users/presence", response_model=List[UserPresenceResponse])
+async def get_multiple_users_presence(
+    user_ids: str,  # Comma-separated user IDs
+    user=Depends(get_current_user_async)
+):
+    """Get presence status for multiple users"""
+    try:
+        ids = [int(id.strip()) for id in user_ids.split(",")]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user IDs format")
+    
+    if len(ids) > 50:  # Limit to prevent abuse
+        raise HTTPException(status_code=400, detail="Too many user IDs requested")
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        presences = await conn.fetch(
+            """
+            SELECT 
+                us.user_id,
+                u.username,
+                us.is_online,
+                us.last_seen,
+                us.is_busy,
+                us.busy_until
+            FROM user_status us
+            JOIN users u ON us.user_id = u.user_id
+            WHERE us.user_id = ANY($1)
+            ORDER BY us.user_id
+            """,
+            ids
+        )
+        return [dict(presence) for presence in presences]
+
+
+@router.post("/admin/cleanup-presence")
+async def cleanup_presence(user=Depends(get_current_user_async)):
+    """Admin endpoint to manually trigger presence cleanup"""
+    # Note: In production, you might want to add admin role checking here
+    
+    # Mark inactive users as offline (5 minutes threshold)
+    offline_result = await mark_inactive_users_offline(inactive_minutes=5)
+    
+    # Clean up expired busy status
+    busy_result = await cleanup_expired_busy_status()
+    
+    return {
+        "message": "Presence cleanup completed",
+        "users_marked_offline": offline_result,
+        "busy_status_cleared": busy_result
+    }
