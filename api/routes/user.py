@@ -169,10 +169,10 @@ async def update_my_status(data: UpdateStatusRequest, user=Depends(get_current_u
             updates.append(f"is_busy = ${param_count}")
             params.append(data.is_busy)
             
-        if data.busy_until is not None:
+        if data.wait_time is not None:
             param_count += 1
-            updates.append(f"busy_until = ${param_count}")
-            params.append(data.busy_until)
+            updates.append(f"wait_time = ${param_count}")
+            params.append(data.wait_time)
         
         # Always update last_seen and updated_at
         param_count += 1
@@ -242,7 +242,7 @@ async def get_user_presence(user_id: int, user=Depends(get_current_user_async)):
                 us.is_online,
                 us.last_seen,
                 us.is_busy,
-                us.busy_until
+                us.wait_time
             FROM user_status us
             JOIN users u ON us.user_id = u.user_id
             WHERE us.user_id = $1
@@ -278,7 +278,7 @@ async def get_multiple_users_presence(
                 us.is_online,
                 us.last_seen,
                 us.is_busy,
-                us.busy_until
+                us.wait_time
             FROM user_status us
             JOIN users u ON us.user_id = u.user_id
             WHERE us.user_id = ANY($1)
@@ -345,7 +345,7 @@ async def get_listeners_feed(
                 us.is_online,
                 us.last_seen,
                 us.is_busy,
-                us.busy_until,
+                us.wait_time,
                 (us.is_online AND NOT us.is_busy) AS is_available
             FROM users u
             LEFT JOIN user_roles ur ON u.user_id = ur.user_id
@@ -394,7 +394,7 @@ async def get_listeners_feed(
         
         # Add GROUP BY and ORDER BY
         base_query += """
-            GROUP BY u.user_id, us.is_online, us.last_seen, us.is_busy, us.busy_until
+            GROUP BY u.user_id, us.is_online, us.last_seen, us.is_busy, us.wait_time
             ORDER BY 
                 us.is_online DESC,  -- Online users first
                 us.is_busy ASC,     -- Available users first
@@ -456,7 +456,7 @@ async def get_listeners_feed(
                 is_online=row["is_online"],
                 last_seen=row["last_seen"],
                 is_busy=row["is_busy"],
-                busy_until=row["busy_until"],
+                wait_time=row["wait_time"],
                 is_available=row["is_available"]
             )
             listeners.append(listener)
@@ -687,7 +687,7 @@ async def get_favorites(
                 us.is_online,
                 us.last_seen,
                 us.is_busy,
-                us.busy_until,
+                us.wait_time,
                 uf.created_at as favorited_at
             {base_query}
             ORDER BY uf.created_at DESC
@@ -730,7 +730,7 @@ async def get_favorites(
                 is_online=fav['is_online'] or False,
                 last_seen=fav['last_seen'] or datetime.now(),
                 is_busy=fav['is_busy'] or False,
-                busy_until=fav['busy_until'],
+                wait_time=fav['wait_time'],
                 is_available=is_available,
                 favorited_at=fav['favorited_at']
             ))

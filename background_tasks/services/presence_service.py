@@ -31,16 +31,17 @@ async def mark_inactive_users_offline(inactive_minutes: int = 5):
 
 async def cleanup_expired_busy_status():
     """
-    Clear busy status for users whose busy_until time has passed
+    Clear busy status for users whose wait_time has expired
     """
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         result = await conn.execute(
             """
             UPDATE user_status 
-            SET is_busy = FALSE, busy_until = NULL, updated_at = now()
+            SET is_busy = FALSE, wait_time = NULL, updated_at = now()
             WHERE is_busy = TRUE 
-            AND busy_until < now()
+            AND wait_time IS NOT NULL 
+            AND wait_time <= 0
             """,
         )
         

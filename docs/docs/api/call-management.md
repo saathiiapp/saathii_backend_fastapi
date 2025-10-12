@@ -120,7 +120,7 @@ Content-Type: application/json
   "duration_seconds": 1800,
   "duration_minutes": 30,
   "coins_spent": 300,
-  "user_money_spend": 300,
+  "coins_spent": 300,
   "listener_money_earned": 240,
   "status": "completed"
 }
@@ -207,7 +207,7 @@ GET /calls/history?page=1&per_page=10&call_type=audio&status=completed
       "duration_seconds": 1800,
       "duration_minutes": 30,
       "coins_spent": 300,
-      "user_money_spend": 300,
+      "coins_spent": 300,
       "listener_money_earned": 450,
       "status": "completed",
       "caller_username": "john_doe",

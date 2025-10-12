@@ -103,7 +103,7 @@ This document explains what happens in the database for each API endpoint, which
 **Database Impact:** UPDATE
 - **Tables:** `user_status`
 - **Operations:**
-  - `UPDATE user_status SET is_online = $2, is_busy = $3, busy_until = $4, updated_at = now() WHERE user_id = $1`
+  - `UPDATE user_status SET is_online = $2, is_busy = $3, wait_time = $4, updated_at = now() WHERE user_id = $1`
 - **Redis:** Broadcasts status update via WebSocket
 
 ### `POST /users/me/heartbeat`
@@ -117,13 +117,13 @@ This document explains what happens in the database for each API endpoint, which
 **Database Impact:** READ
 - **Tables:** `user_status`, `users`
 - **Operations:**
-  - `SELECT us.user_id, u.username, us.is_online, us.is_busy, us.busy_until FROM user_status us JOIN users u ON us.user_id = u.user_id WHERE us.user_id = $1`
+  - `SELECT us.user_id, u.username, us.is_online, us.is_busy, us.wait_time FROM user_status us JOIN users u ON us.user_id = u.user_id WHERE us.user_id = $1`
 
 ### `GET /users/presence`
 **Database Impact:** READ
 - **Tables:** `user_status`, `users`
 - **Operations:**
-  - `SELECT us.user_id, u.username, us.is_online, us.is_busy, us.busy_until FROM user_status us JOIN users u ON us.user_id = u.user_id WHERE us.user_id = ANY($1)`
+  - `SELECT us.user_id, u.username, us.is_online, us.is_busy, us.wait_time FROM user_status us JOIN users u ON us.user_id = u.user_id WHERE us.user_id = ANY($1)`
 
 ### `POST /admin/cleanup-presence`
 **Database Impact:** UPDATE + UPDATE
@@ -307,20 +307,20 @@ This document explains what happens in the database for each API endpoint, which
 - **Operations:**
   - `INSERT INTO user_wallets (user_id, balance_coins, created_at) VALUES ($1, 0, now()) ON CONFLICT (user_id) DO NOTHING` - Ensure wallet exists
   - `UPDATE user_wallets SET balance_coins = balance_coins - $2 WHERE user_id = $1` - Reserve coins
-  - `INSERT INTO user_calls (user_id, listener_id, call_type, status, coins_spent, user_money_spend, listener_money_earned) VALUES ($1, $2, $3, 'ongoing', $4, $4, 0)` - Create call record
-  - `UPDATE user_status SET is_busy = TRUE, busy_until = $2, updated_at = now() WHERE user_id = $1` - Set caller busy
-  - `UPDATE user_status SET is_busy = TRUE, busy_until = $2, updated_at = now() WHERE user_id = $1` - Set listener busy
+  - `INSERT INTO user_calls (user_id, listener_id, call_type, status, coins_spent, listener_money_earned) VALUES ($1, $2, $3, 'ongoing', $4, 0)` - Create call record
+  - `UPDATE user_status SET is_busy = TRUE, wait_time = $2, updated_at = now() WHERE user_id = $1` - Set caller busy
+  - `UPDATE user_status SET is_busy = TRUE, wait_time = $2, updated_at = now() WHERE user_id = $1` - Set listener busy
 - **Redis:** Stores call info for real-time tracking
 
 ### `POST /calls/end`
 **Database Impact:** UPDATE + UPDATE + UPDATE + UPDATE
 - **Tables:** `user_calls`, `user_wallets` (2 rows), `user_status` (2 rows)
 - **Operations:**
-  - `UPDATE user_calls SET end_time = $1, duration_seconds = $2, duration_minutes = $3, coins_spent = $4, user_money_spend = $4, listener_money_earned = $5, status = $6, updated_at = now() WHERE call_id = $7` - Update call record
+  - `UPDATE user_calls SET end_time = $1, duration_seconds = $2, duration_minutes = $3, coins_spent = $4, listener_money_earned = $5, status = $6, updated_at = now() WHERE call_id = $7` - Update call record
   - `UPDATE user_wallets SET balance_coins = balance_coins - $2 WHERE user_id = $1` - Deduct additional coins from caller
   - `UPDATE user_wallets SET balance_coins = balance_coins + $2 WHERE user_id = $1` - Add earnings to listener
-  - `UPDATE user_status SET is_busy = FALSE, busy_until = NULL, updated_at = now() WHERE user_id = $1` - Set caller available
-  - `UPDATE user_status SET is_busy = FALSE, busy_until = NULL, updated_at = now() WHERE user_id = $1` - Set listener available
+  - `UPDATE user_status SET is_busy = FALSE, wait_time = NULL, updated_at = now() WHERE user_id = $1` - Set caller available
+  - `UPDATE user_status SET is_busy = FALSE, wait_time = NULL, updated_at = now() WHERE user_id = $1` - Set listener available
 - **Redis:** Removes call info
 
 ### `GET /calls/ongoing`

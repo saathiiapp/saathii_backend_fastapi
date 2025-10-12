@@ -63,7 +63,7 @@ async def get_user_status_for_broadcast(user_id: int) -> Dict[str, Any]:
                     us.is_online,
                     us.last_seen,
                     us.is_busy,
-                    us.busy_until,
+                    us.wait_time,
                     (us.is_online AND NOT us.is_busy) AS is_available
                 FROM users u
                 LEFT JOIN user_status us ON u.user_id = us.user_id
@@ -80,7 +80,7 @@ async def get_user_status_for_broadcast(user_id: int) -> Dict[str, Any]:
                     "is_online": result["is_online"],
                     "last_seen": result["last_seen"].isoformat() if result["last_seen"] else None,
                     "is_busy": result["is_busy"],
-                    "busy_until": result["busy_until"].isoformat() if result["busy_until"] else None,
+                    "wait_time": result["wait_time"],
                     "is_available": result["is_available"]
                 }
             else:
@@ -110,11 +110,11 @@ async def broadcast_user_left(user_id: int):
     await broadcast_user_status_update(user_id, status_data)
 
 
-async def broadcast_user_busy_status_change(user_id: int, is_busy: bool, busy_until=None):
+async def broadcast_user_busy_status_change(user_id: int, is_busy: bool, wait_time=None):
     """Broadcast when a user's busy status changes"""
     status_data = await get_user_status_for_broadcast(user_id)
     if status_data:
         status_data["is_busy"] = is_busy
-        status_data["busy_until"] = busy_until.isoformat() if busy_until else None
+        status_data["wait_time"] = wait_time
         status_data["is_available"] = status_data["is_online"] and not is_busy
         await broadcast_user_status_update(user_id, status_data)

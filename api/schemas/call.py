@@ -15,12 +15,11 @@ class CallStatus(str, Enum):
 class StartCallRequest(BaseModel):
     listener_id: int = Field(..., description="ID of the listener to call")
     call_type: CallType = Field(..., description="Type of call (audio or video)")
-    estimated_duration_minutes: Optional[int] = Field(None, description="Estimated call duration in minutes")
 
 class StartCallResponse(BaseModel):
     call_id: int
     message: str
-    estimated_cost: int = Field(..., description="Estimated cost in coins")
+    call_duration: int = Field(..., description="Maximum call duration in minutes based on available coins")
     remaining_coins: int = Field(..., description="Remaining coins after call starts")
     call_type: CallType
     listener_id: int
@@ -36,7 +35,6 @@ class EndCallResponse(BaseModel):
     duration_seconds: int
     duration_minutes: int
     coins_spent: int
-    user_money_spend: int
     listener_money_earned: int
     status: CallStatus
 
@@ -49,7 +47,6 @@ class CallInfo(BaseModel):
     end_time: Optional[datetime]
     duration_seconds: Optional[int]
     duration_minutes: Optional[int]
-    user_money_spend: int
     coins_spent: int
     listener_money_earned: int
     status: CallStatus
@@ -60,7 +57,6 @@ class CallHistoryResponse(BaseModel):
     calls: list[CallInfo]
     total_calls: int
     total_coins_spent: int
-    total_money_spent: int
     total_earnings: int = Field(..., description="Total earnings as listener")
     page: int
     per_page: int

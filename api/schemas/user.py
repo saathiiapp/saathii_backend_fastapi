@@ -39,13 +39,13 @@ class UserStatusResponse(BaseModel):
     is_online: bool
     last_seen: datetime
     is_busy: bool
-    busy_until: Optional[datetime] = None
+    wait_time: Optional[int] = None
 
 
 class UpdateStatusRequest(BaseModel):
     is_online: Optional[bool] = None
     is_busy: Optional[bool] = None
-    busy_until: Optional[datetime] = None
+    wait_time: Optional[int] = None
 
 
 class HeartbeatRequest(BaseModel):
@@ -59,7 +59,7 @@ class UserPresenceResponse(BaseModel):
     is_online: bool
     last_seen: datetime
     is_busy: bool
-    busy_until: Optional[datetime] = None
+    wait_time: Optional[int] = None
 
 
 # Feed-related schemas
@@ -78,7 +78,7 @@ class ListenerFeedItem(BaseModel):
     is_online: bool
     last_seen: datetime
     is_busy: bool
-    busy_until: Optional[datetime] = None
+    wait_time: Optional[int] = None
     # Additional feed-specific fields
     is_available: bool  # True if online and not busy
 
@@ -124,7 +124,7 @@ class FavoriteUser(BaseModel):
     is_online: bool
     last_seen: datetime
     is_busy: bool
-    busy_until: Optional[datetime] = None
+    wait_time: Optional[int] = None
     # Favorite-specific fields
     is_available: bool  # True if online and not busy
     favorited_at: datetime

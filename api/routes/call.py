@@ -8,7 +8,6 @@ from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
 from api.utils.realtime import broadcast_user_status_update, get_user_status_for_broadcast
 from api.utils.badge_manager import get_listener_earning_rate
-# Background functions moved to services - no longer needed in API
 from api.schemas.call import (
     StartCallRequest,
     StartCallResponse,
@@ -16,19 +15,9 @@ from api.schemas.call import (
     EndCallResponse,
     CallInfo,
     CallHistoryResponse,
-    CoinBalanceResponse,
     CallType,
     CallStatus,
-    DEFAULT_CALL_RATES,
-    LISTENER_EARNINGS,
-    RECHARGE_RATES,
-    RechargeRequest,
-    RechargeResponse,
-    RechargeHistoryResponse,
-    TransactionType,
-    TransactionInfo,
-    UserTransactionHistoryResponse,
-    ListenerTransactionHistoryResponse
+    DEFAULT_CALL_RATES
 )
 
 router = APIRouter(tags=["Call Management"])
@@ -95,10 +84,6 @@ async def start_call(data: StartCallRequest, user=Depends(get_current_user_async
         if not await check_user_availability(user_id):
             raise HTTPException(status_code=409, detail="You are already on a call")
         
-        # Calculate estimated cost
-        estimated_duration = data.estimated_duration_minutes or 30  # Default 30 minutes
-        estimated_cost = calculate_call_cost(data.call_type, estimated_duration)
-        
         # Ensure user has a wallet
         await conn.execute(
             """
@@ -109,24 +94,38 @@ async def start_call(data: StartCallRequest, user=Depends(get_current_user_async
             user_id
         )
         
-        # Reserve coins for the call (subtract minimum charge)
-        minimum_charge = DEFAULT_CALL_RATES[data.call_type].minimum_charge
-        await update_user_coin_balance(user_id, minimum_charge, "subtract", "spend")
+        # Get user's current coin balance
+        current_balance = await get_user_coin_balance(user_id)
+        
+        # Get rate per minute
+        rate_per_minute = DEFAULT_CALL_RATES[data.call_type].rate_per_minute
+        
+        if current_balance < rate_per_minute:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient coins. Required: {rate_per_minute}, Available: {current_balance}"
+            )
+        
+        # Calculate maximum call duration based on available coins
+        max_duration_minutes = current_balance // rate_per_minute
+        
+        # Reserve coins for the first minute
+        await update_user_coin_balance(user_id, rate_per_minute, "subtract", "spend")
         
         # Create call record
         call = await conn.fetchrow(
             """
             INSERT INTO user_calls 
-            (user_id, listener_id, call_type, status, coins_spent, user_money_spend, listener_money_earned)
-            VALUES ($1, $2, $3, 'ongoing', $4, $4, 0)
+            (user_id, listener_id, call_type, status, coins_spent, listener_money_earned)
+            VALUES ($1, $2, $3, 'ongoing', $4, 0)
             RETURNING call_id, coins_spent
             """,
-            user_id, data.listener_id, data.call_type.value, minimum_charge
+            user_id, data.listener_id, data.call_type.value, rate_per_minute
         )
         
         # Set both users as busy simultaneously
-        busy_until = datetime.utcnow() + timedelta(hours=2)  # Max 2 hours
-        await update_both_users_presence(user_id, data.listener_id, True, busy_until)
+        wait_time = max_duration_minutes  # Set wait time to max call duration
+        await update_both_users_presence(user_id, data.listener_id, True, wait_time)
         
         # Store call info in Redis for real-time tracking
         call_key = f"call:{call['call_id']}"
@@ -135,14 +134,14 @@ async def start_call(data: StartCallRequest, user=Depends(get_current_user_async
             "listener_id": str(data.listener_id),
             "call_type": data.call_type.value,
             "start_time": str(int(time.time())),
-            "coins_spent": str(minimum_charge)
+            "coins_spent": str(rate_per_minute)
         })
         await redis_client.expire(call_key, 7200)  # 2 hours expiry
         
         return StartCallResponse(
             call_id=call['call_id'],
             message="Call started successfully",
-            estimated_cost=estimated_cost,
+            call_duration=max_duration_minutes,
             remaining_coins=await get_user_coin_balance(user_id),
             call_type=data.call_type,
             listener_id=data.listener_id,
@@ -174,25 +173,36 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
         duration_seconds = int((end_time - start_time).total_seconds())
         duration_minutes = max(1, duration_seconds // 60)  # Minimum 1 minute
         
-        # Calculate additional cost beyond minimum charge
+        # Calculate total cost (per-minute charging)
         call_type = CallType(call['call_type'])
-        total_cost = calculate_call_cost(call_type, duration_minutes)
+        rate_per_minute = DEFAULT_CALL_RATES[call_type].rate_per_minute
+        total_cost = duration_minutes * rate_per_minute
         additional_cost = total_cost - call['coins_spent']
         
         # Check if user has enough coins for additional cost
         if additional_cost > 0:
             current_balance = await get_user_coin_balance(user_id)
             if current_balance < additional_cost:
-                # Handle coin empty scenario
+                # Handle coin empty scenario - calculate listener earnings first
+                call_type = CallType(call['call_type'])
+                listener_rupees_per_minute = await get_listener_earning_rate(call['listener_id'], call_type.value)
+                listener_earnings = int(listener_rupees_per_minute * duration_minutes)
+                
+                # Update call record with correct coins_spent and listener_money_earned
                 await conn.execute(
                     """
                     UPDATE user_calls 
-                    SET end_time = $1, duration_seconds = $2, duration_minutes = $3, 
+                    SET end_time = $1, duration_seconds = $2, duration_minutes = $3,
+                        coins_spent = $4, listener_money_earned = $5,
                         status = 'dropped', updated_at = now()
-                    WHERE call_id = $4
+                    WHERE call_id = $6
                     """,
-                    end_time, duration_seconds, duration_minutes, data.call_id
+                    end_time, duration_seconds, duration_minutes, total_cost, 
+                    listener_earnings, data.call_id
                 )
+                
+                # Add earnings to listener
+                await update_user_coin_balance(call['listener_id'], listener_earnings, "add", "earn")
                 
                 # Set both users as not busy
                 await update_both_users_presence(call['user_id'], call['listener_id'], False)
@@ -205,9 +215,8 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
                     message="Call ended due to insufficient coins",
                     duration_seconds=duration_seconds,
                     duration_minutes=duration_minutes,
-                    coins_spent=call['coins_spent'],
-                    user_money_spend=call['user_money_spend'],
-                    listener_money_earned=0,
+                    coins_spent=total_cost,
+                    listener_money_earned=listener_earnings,
                     status=CallStatus.DROPPED
                 )
             
@@ -224,7 +233,7 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
             """
             UPDATE user_calls 
             SET end_time = $1, duration_seconds = $2, duration_minutes = $3,
-                coins_spent = $4, user_money_spend = $4, listener_money_earned = $5,
+                coins_spent = $4, listener_money_earned = $5,
                 status = $6, updated_at = now()
             WHERE call_id = $7
             """,
@@ -247,7 +256,6 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
             duration_seconds=duration_seconds,
             duration_minutes=duration_minutes,
             coins_spent=total_cost,
-            user_money_spend=total_cost,
             listener_money_earned=listener_earnings,
             status=CallStatus.COMPLETED if data.reason != "dropped" else CallStatus.DROPPED
         )
@@ -342,15 +350,6 @@ async def get_call_history(
             user_id, *params[1:]
         )
         
-        # Get total money spent (as caller)
-        total_money_spent = await conn.fetchval(
-            f"""
-            SELECT COALESCE(SUM(user_money_spend), 0) 
-            FROM user_calls 
-            WHERE user_id = $1 AND {where_clause.replace('(user_id = $1 OR listener_id = $1)', 'user_id = $1')}
-            """,
-            user_id, *params[1:]
-        )
         
         # Get total earnings (as listener)
         total_earnings = await conn.fetchval(
@@ -374,7 +373,6 @@ async def get_call_history(
                 end_time=call['end_time'],
                 duration_seconds=call['duration_seconds'],
                 duration_minutes=call['duration_minutes'],
-                user_money_spend=call['user_money_spend'],
                 coins_spent=call['coins_spent'],
                 listener_money_earned=call['listener_money_earned'],
                 status=CallStatus(call['status']),
@@ -387,7 +385,6 @@ async def get_call_history(
             calls=call_infos,
             total_calls=total_calls,
             total_coins_spent=total_coins_spent,
-            total_money_spent=total_money_spent,
             total_earnings=total_earnings,
             page=page,
             per_page=per_page,
@@ -395,26 +392,20 @@ async def get_call_history(
             has_previous=page > 1
         )
 
-def calculate_call_cost(call_type: CallType, duration_minutes: int) -> int:
-    """Calculate call cost based on type and duration"""
-    rate_config = DEFAULT_CALL_RATES[call_type]
-    cost = max(rate_config.minimum_charge, duration_minutes * rate_config.rate_per_minute)
-    return cost
-
-async def update_user_coin_balance(user_id: int, amount: int, operation: str = "subtract", tx_type: str = "spend"):
+async def update_user_coin_balance(user_id: int, coins: int, operation: str = "subtract", tx_type: str = "spend"):
     """Update user's coin balance in wallet and create transaction record"""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         if operation == "subtract":
             # Check if user has enough coins
             current_balance = await get_user_coin_balance(user_id)
-            if current_balance < amount:
+            if current_balance < coins:
                 raise HTTPException(status_code=400, detail="Insufficient coins")
             
             # Update wallet balance
             await conn.execute(
                 "UPDATE user_wallets SET balance_coins = balance_coins - $1, updated_at = now() WHERE user_id = $2",
-                amount, user_id
+                coins, user_id
             )
             
             # Create transaction record
@@ -425,13 +416,13 @@ async def update_user_coin_balance(user_id: int, amount: int, operation: str = "
                     INSERT INTO user_transactions (wallet_id, tx_type, coins_change, created_at)
                     VALUES ($1, $2, $3, now())
                     """,
-                    wallet_id, tx_type, -amount
+                    wallet_id, tx_type, -coins
                 )
         elif operation == "add":
             # Update wallet balance
             await conn.execute(
                 "UPDATE user_wallets SET balance_coins = balance_coins + $1, updated_at = now() WHERE user_id = $2",
-                amount, user_id
+                coins, user_id
             )
             
             # Create transaction record
@@ -442,22 +433,22 @@ async def update_user_coin_balance(user_id: int, amount: int, operation: str = "
                     INSERT INTO user_transactions (wallet_id, tx_type, coins_change, created_at)
                     VALUES ($1, $2, $3, now())
                     """,
-                    wallet_id, "earn", amount
+                    wallet_id, "earn", coins
                 )
 
-async def update_both_users_presence(user_id: int, listener_id: int, is_busy: bool, busy_until: datetime = None):
+async def update_both_users_presence(user_id: int, listener_id: int, is_busy: bool, wait_time: int = None):
     """Update presence status for both caller and listener simultaneously"""
     print(f"🔄 Updating presence for both users: {user_id} and {listener_id}, busy={is_busy}")
     
     # Update both users' status in parallel
     await asyncio.gather(
-        set_user_busy_status(user_id, is_busy, busy_until),
-        set_user_busy_status(listener_id, is_busy, busy_until)
+        set_user_busy_status(user_id, is_busy, wait_time),
+        set_user_busy_status(listener_id, is_busy, wait_time)
     )
     
     print(f"✅ Both users' presence status updated successfully")
 
-async def set_user_busy_status(user_id: int, is_busy: bool, busy_until: datetime = None):
+async def set_user_busy_status(user_id: int, is_busy: bool, wait_time: int = None):
     """Set user's busy status during calls and broadcast to all connected clients"""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -465,10 +456,10 @@ async def set_user_busy_status(user_id: int, is_busy: bool, busy_until: datetime
         await conn.execute(
             """
             UPDATE user_status 
-            SET is_busy = $1, busy_until = $2, updated_at = now()
+            SET is_busy = $1, wait_time = $2, updated_at = now()
             WHERE user_id = $3
             """,
-            is_busy, busy_until, user_id
+            is_busy, wait_time, user_id
         )
         
         # Also update is_online to true when starting a call

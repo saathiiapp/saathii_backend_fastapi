@@ -15,7 +15,7 @@ async def cleanup_expired_calls():
     """Background task to cleanup expired calls and update presence status"""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        # Find calls that should have ended (busy_until < now)
+        # Find calls that should have ended (wait_time expired)
         expired_calls = await conn.fetch(
             """
             SELECT call_id, user_id, listener_id, call_type, start_time, coins_spent
@@ -23,7 +23,7 @@ async def cleanup_expired_calls():
             JOIN user_status us1 ON uc.user_id = us1.user_id
             JOIN user_status us2 ON uc.listener_id = us2.user_id
             WHERE uc.status = 'ongoing' 
-            AND (us1.busy_until < now() OR us2.busy_until < now())
+            AND (us1.wait_time IS NOT NULL AND us1.wait_time <= 0)
             """
         )
         
@@ -72,7 +72,7 @@ async def cleanup_expired_calls():
                         """
                         UPDATE user_calls 
                         SET end_time = $1, duration_seconds = $2, duration_minutes = $3,
-                            coins_spent = $4, user_money_spend = $4, listener_money_earned = $5,
+                            coins_spent = $4, listener_money_earned = $5,
                             status = 'dropped', updated_at = now()
                         WHERE call_id = $6 AND status = 'ongoing'
                         """,
@@ -157,19 +157,19 @@ async def update_user_coin_balance(user_id: int, amount: int, operation: str = "
                     wallet_id, "earn", amount
                 )
 
-async def update_both_users_presence(user_id: int, listener_id: int, is_busy: bool, busy_until: datetime = None):
+async def update_both_users_presence(user_id: int, listener_id: int, is_busy: bool, wait_time: int = None):
     """Update presence status for both caller and listener simultaneously"""
     logger.info(f"🔄 Updating presence for both users: {user_id} and {listener_id}, busy={is_busy}")
     
     # Update both users' status in parallel
     await asyncio.gather(
-        set_user_busy_status(user_id, is_busy, busy_until),
-        set_user_busy_status(listener_id, is_busy, busy_until)
+        set_user_busy_status(user_id, is_busy, wait_time),
+        set_user_busy_status(listener_id, is_busy, wait_time)
     )
     
     logger.info(f"✅ Both users' presence status updated successfully")
 
-async def set_user_busy_status(user_id: int, is_busy: bool, busy_until: datetime = None):
+async def set_user_busy_status(user_id: int, is_busy: bool, wait_time: int = None):
     """Set user's busy status during calls and broadcast to all connected clients"""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -177,10 +177,10 @@ async def set_user_busy_status(user_id: int, is_busy: bool, busy_until: datetime
         await conn.execute(
             """
             UPDATE user_status 
-            SET is_busy = $1, busy_until = $2, updated_at = now()
+            SET is_busy = $1, wait_time = $2, updated_at = now()
             WHERE user_id = $3
             """,
-            is_busy, busy_until, user_id
+            is_busy, wait_time, user_id
         )
         
         # Also update is_online to true when starting a call

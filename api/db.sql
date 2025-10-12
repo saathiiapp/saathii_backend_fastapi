@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS user_status (
   is_online     BOOLEAN DEFAULT FALSE,   -- online/offline presence
   last_seen     TIMESTAMPTZ DEFAULT now(),
   is_busy       BOOLEAN DEFAULT FALSE,   -- whether currently on a call
-  busy_until    TIMESTAMPTZ,             -- if on call, expected end time
+  wait_time     INT,                     -- if on call, expected duration in minutes
   updated_at    TIMESTAMPTZ DEFAULT now(),
   created_at      TIMESTAMPTZ DEFAULT now()
 );
@@ -66,7 +66,6 @@ CREATE TABLE IF NOT EXISTS user_calls (
   end_time        TIMESTAMPTZ,
   duration_seconds INT,
   duration_minutes INT,
-  user_money_spend BIGINT DEFAULT 0,
   coins_spent     BIGINT DEFAULT 0,
   listener_money_earned BIGINT DEFAULT 0,
   status          VARCHAR(20) CHECK (status IN ('ongoing','completed','dropped')) DEFAULT 'ongoing',

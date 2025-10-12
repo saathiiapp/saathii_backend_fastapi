@@ -194,7 +194,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
   "is_online": true,
   "last_seen": "2024-01-15T10:30:00Z",
   "is_busy": false,
-  "busy_until": null
+  "wait_time": null
 }
 ```
 
@@ -207,7 +207,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 {
   "is_online": true,
   "is_busy": false,
-  "busy_until": "2024-01-15T11:00:00Z"
+  "wait_time": 30
 }
 ```
 - **Response**: `200` - Updated status
@@ -269,7 +269,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
       "is_online": true,
       "last_seen": "2024-01-15T10:30:00Z",
       "is_busy": false,
-      "busy_until": null,
+      "wait_time": null,
       "is_available": true
     }
   ],
@@ -524,7 +524,7 @@ Example: `verification-audio/123/20240115_103000_abc12345.mp3`
   "duration_seconds": 1800,
   "duration_minutes": 30,
   "coins_spent": 300,
-  "user_money_spend": 300,
+  "coins_spent": 300,
   "listener_money_earned": 240,
   "status": "completed"
 }
@@ -559,7 +559,7 @@ Example: `verification-audio/123/20240115_103000_abc12345.mp3`
       "duration_seconds": 1800,
       "duration_minutes": 30,
       "coins_spent": 300,
-      "user_money_spend": 300,
+      "coins_spent": 300,
       "listener_money_earned": 450,
       "status": "completed",
       "caller_username": "john_doe",
@@ -852,7 +852,7 @@ The system automatically manages user presence status during calls:
     "is_online": true,
     "last_seen": "2024-01-15T10:30:00Z",
     "is_busy": false,
-    "busy_until": null,
+    "wait_time": null,
     "is_available": true
   }
 }
@@ -1531,7 +1531,7 @@ curl -X GET 'http://localhost:8000/feed/listeners?online_only=true' \
 curl -X PUT 'http://localhost:8000/users/me/status' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
   -H 'Content-Type: application/json' \
-  -d '{"is_busy":true,"busy_until":"2024-01-15T11:00:00Z"}'
+  -d '{"is_busy":true,"wait_time":30}'
 ```
 
 **Send Heartbeat**

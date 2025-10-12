@@ -34,7 +34,7 @@ Authorization: Bearer <access_token>
   "user_id": 123,
   "is_online": true,
   "is_busy": false,
-  "busy_until": null,
+  "wait_time": null,
   "last_seen": "2024-01-15T10:30:00Z",
   "created_at": "2024-01-15T10:30:00Z",
   "updated_at": "2024-01-15T10:30:00Z"
@@ -45,7 +45,7 @@ Authorization: Bearer <access_token>
 - `user_id`: User identifier
 - `is_online`: Current online status
 - `is_busy`: Whether user is currently busy (in a call)
-- `busy_until`: When busy status expires (if set)
+- `wait_time`: Expected call duration in minutes (if on call)
 - `last_seen`: Last activity timestamp
 - `created_at`: Status record creation time
 - `updated_at`: Last status update time
@@ -67,14 +67,14 @@ Content-Type: application/json
 {
   "is_online": true,
   "is_busy": false,
-  "busy_until": "2024-01-15T11:00:00Z"
+  "wait_time": 30
 }
 ```
 
 **Field Descriptions:**
 - `is_online` (optional): Set online status
 - `is_busy` (optional): Set busy status
-- `busy_until` (optional): Set busy status expiration time
+- `wait_time` (optional): Set expected call duration in minutes
 
 **Response:**
 ```json
@@ -82,7 +82,7 @@ Content-Type: application/json
   "user_id": 123,
   "is_online": true,
   "is_busy": false,
-  "busy_until": "2024-01-15T11:00:00Z",
+  "wait_time": 30,
   "last_seen": "2024-01-15T10:30:00Z",
   "created_at": "2024-01-15T10:30:00Z",
   "updated_at": "2024-01-15T10:30:00Z"
@@ -133,7 +133,7 @@ Authorization: Bearer <access_token>
   "username": "jane_smith",
   "is_online": true,
   "is_busy": false,
-  "busy_until": null,
+  "wait_time": null,
   "last_seen": "2024-01-15T10:25:00Z"
 }
 ```
@@ -165,7 +165,7 @@ GET /users/presence?user_ids=123,456,789
     "username": "alice",
     "is_online": true,
     "is_busy": false,
-    "busy_until": null,
+    "wait_time": null,
     "last_seen": "2024-01-15T10:30:00Z"
   },
   {
@@ -173,7 +173,7 @@ GET /users/presence?user_ids=123,456,789
     "username": "jane_smith",
     "is_online": true,
     "is_busy": true,
-    "busy_until": "2024-01-15T11:00:00Z",
+    "wait_time": 30,
     "last_seen": "2024-01-15T10:25:00Z"
   }
 ]
@@ -213,7 +213,7 @@ Authorization: Bearer <access_token>
 ### Busy Status
 - `is_busy: true` - User is in a call or unavailable
 - `is_busy: false` - User is available for calls
-- `busy_until` - Optional expiration time for busy status
+- `wait_time` - Optional expected call duration in minutes
 
 ## Real-time Updates
 
@@ -291,7 +291,7 @@ export interface UserStatus {
   user_id: number;
   is_online: boolean;
   is_busy: boolean;
-  busy_until?: string;
+  wait_time?: number;
   last_seen: string;
   created_at: string;
   updated_at: string;
@@ -302,7 +302,7 @@ export interface UserPresence {
   username: string;
   is_online: boolean;
   is_busy: boolean;
-  busy_until?: string;
+  wait_time?: number;
   last_seen: string;
 }
 
