@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import auth, user, websocket
+from app.routes import auth, user, websocket, call
 from app.clients.websocket_manager import manager
 import asyncio
 
@@ -17,6 +17,10 @@ app = FastAPI(
             "description": "User profile management, presence tracking, and administrative functions",
         },
         {
+            "name": "Call Management",
+            "description": "Call management system with coin-based billing, call lifecycle, and real-time status updates",
+        },
+        {
             "name": "WebSocket",
             "description": "Real-time WebSocket connections for live updates and presence tracking",
         },
@@ -26,6 +30,7 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(websocket.router)
+app.include_router(call.router)
 
 
 @app.on_event("startup")

@@ -38,7 +38,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
-@router.get("/users/me", response_model=UserResponse, tags=["User Management", "Profile"])
+@router.get("/users/me", response_model=UserResponse, tags=["User Management"])
 async def get_me(user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -59,7 +59,7 @@ async def get_me(user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.put("/users/me", response_model=UserResponse, tags=["User Management", "Profile"])
+@router.put("/users/me", response_model=UserResponse, tags=["User Management"])
 async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -87,7 +87,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.delete("/users/me", tags=["User Management", "Profile"])
+@router.delete("/users/me", tags=["User Management"])
 async def delete_me(authorization: str = Header(...), user=Depends(get_current_user_async)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
@@ -116,7 +116,7 @@ async def delete_me(authorization: str = Header(...), user=Depends(get_current_u
 
 
 # Status/Presence endpoints for React Native
-@router.get("/users/me/status", response_model=UserStatusResponse, tags=["User Management", "Presence"])
+@router.get("/users/me/status", response_model=UserStatusResponse, tags=["User Management"])
 async def get_my_status(user=Depends(get_current_user_async)):
     """Get current user's online status"""
     pool = await get_db_pool()
@@ -130,7 +130,7 @@ async def get_my_status(user=Depends(get_current_user_async)):
         return dict(status)
 
 
-@router.put("/users/me/status", response_model=UserStatusResponse, tags=["User Management", "Presence"])
+@router.put("/users/me/status", response_model=UserStatusResponse, tags=["User Management"])
 async def update_my_status(data: UpdateStatusRequest, user=Depends(get_current_user_async)):
     """Update current user's online status (online/offline, busy status)"""
     pool = await get_db_pool()
@@ -186,7 +186,7 @@ async def update_my_status(data: UpdateStatusRequest, user=Depends(get_current_u
         return dict(status)
 
 
-@router.post("/users/me/heartbeat", tags=["User Management", "Presence"])
+@router.post("/users/me/heartbeat", tags=["User Management"])
 async def heartbeat(user=Depends(get_current_user_async)):
     """Send heartbeat to keep user online and update last_seen"""
     pool = await get_db_pool()
@@ -210,7 +210,7 @@ async def heartbeat(user=Depends(get_current_user_async)):
     return {"message": "Heartbeat received"}
 
 
-@router.get("/users/{user_id}/presence", response_model=UserPresenceResponse, tags=["User Management", "Presence"])
+@router.get("/users/{user_id}/presence", response_model=UserPresenceResponse, tags=["User Management"])
 async def get_user_presence(user_id: int, user=Depends(get_current_user_async)):
     """Get another user's presence status"""
     pool = await get_db_pool()
@@ -235,7 +235,7 @@ async def get_user_presence(user_id: int, user=Depends(get_current_user_async)):
         return dict(presence)
 
 
-@router.get("/users/presence", response_model=List[UserPresenceResponse], tags=["User Management", "Presence"])
+@router.get("/users/presence", response_model=List[UserPresenceResponse], tags=["User Management"])
 async def get_multiple_users_presence(
     user_ids: str,  # Comma-separated user IDs
     user=Depends(get_current_user_async)
@@ -270,7 +270,7 @@ async def get_multiple_users_presence(
         return [dict(presence) for presence in presences]
 
 
-@router.post("/admin/cleanup-presence", tags=["User Management", "Admin"])
+@router.post("/admin/cleanup-presence", tags=["User Management"])
 async def cleanup_presence(user=Depends(get_current_user_async)):
     """Admin endpoint to manually trigger presence cleanup"""
     # Note: In production, you might want to add admin role checking here
@@ -288,7 +288,7 @@ async def cleanup_presence(user=Depends(get_current_user_async)):
     }
 
 
-@router.get("/feed/listeners", response_model=FeedResponse, tags=["User Management", "Feed"])
+@router.get("/feed/listeners", response_model=FeedResponse, tags=["User Management"])
 async def get_listeners_feed(
     online_only: bool = False,
     available_only: bool = False,
@@ -468,7 +468,7 @@ async def get_listeners_feed(
         )
 
 
-@router.get("/feed/stats", tags=["User Management", "Feed"])
+@router.get("/feed/stats", tags=["User Management"])
 async def get_feed_stats(user=Depends(get_current_user_async)):
     """
     Get listener statistics for the feed page.

@@ -19,10 +19,12 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 - [User Management](#user-management)
 - [Presence & Status](#presence--status)
 - [Feed System](#feed-system)
+- [Call Management](#call-management)
 - [WebSocket Real-time Updates](#websocket-real-time-updates)
 - [React Native Integration](#react-native-integration)
 - [API Examples](#api-examples)
 - [Swagger Documentation](#swagger-documentation)
+- [Getting Started](#-getting-started)
 
 ## Base URL
 
@@ -43,7 +45,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 1. Request OTP
 - **Endpoint**: `POST /auth/request_otp`
-- **Tags**: Authentication, OTP
+- **Tags**: Authentication
 - **Body**:
 ```json
 { "phone": "+919876543210" }
@@ -54,7 +56,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 2. Resend OTP
 - **Endpoint**: `POST /auth/resend_otp`
-- **Tags**: Authentication, OTP
+- **Tags**: Authentication
 - **Body**:
 ```json
 { "phone": "+919876543210" }
@@ -69,7 +71,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 3. Verify OTP
 - **Endpoint**: `POST /auth/verify`
-- **Tags**: Authentication, OTP
+- **Tags**: Authentication
 - **Body**:
 ```json
 { "phone": "+919876543210", "otp": "123456" }
@@ -87,7 +89,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 4. Register User
 - **Endpoint**: `POST /auth/register`
-- **Tags**: Authentication, Registration
+- **Tags**: Authentication
 - **Body**:
 ```json
 {
@@ -106,7 +108,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 5. Refresh Tokens
 - **Endpoint**: `POST /auth/refresh`
-- **Tags**: Authentication, Token Management
+- **Tags**: Authentication
 - **Body**:
 ```json
 { "refresh_token": "..." }
@@ -116,7 +118,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 6. Logout
 - **Endpoint**: `POST /auth/logout`
-- **Tags**: Authentication, Token Management
+- **Tags**: Authentication
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Behavior**: Blacklists current access token and revokes all refresh tokens for the user
 - **Response**: `200` - `{ "message": "Logged out" }`
@@ -127,7 +129,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 1. Get Current User
 - **Endpoint**: `GET /users/me`
-- **Tags**: User Management, Profile
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Response**: `200` - User profile with active roles
 ```json
@@ -149,7 +151,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 2. Update Current User
 - **Endpoint**: `PUT /users/me`
-- **Tags**: User Management, Profile
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Body** (any subset):
 ```json
@@ -166,7 +168,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 3. Delete Current User
 - **Endpoint**: `DELETE /users/me`
-- **Tags**: User Management, Profile
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Response**: `200` - `{ "message": "User deleted" }`
 
@@ -176,7 +178,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 1. Get My Status
 - **Endpoint**: `GET /users/me/status`
-- **Tags**: User Management, Presence
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Response**: `200` - Current user's status
 ```json
@@ -191,7 +193,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 2. Update My Status
 - **Endpoint**: `PUT /users/me/status`
-- **Tags**: User Management, Presence
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Body**:
 ```json
@@ -206,20 +208,20 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 3. Heartbeat
 - **Endpoint**: `POST /users/me/heartbeat`
-- **Tags**: User Management, Presence
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Response**: `200` - `{ "message": "Heartbeat received" }`
 - **Note**: Updates last_seen and triggers real-time broadcast
 
 #### 4. Get User Presence
 - **Endpoint**: `GET /users/{user_id}/presence`
-- **Tags**: User Management, Presence
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Response**: `200` - User's presence status
 
 #### 5. Get Multiple Users Presence
 - **Endpoint**: `GET /users/presence`
-- **Tags**: User Management, Presence
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Query Parameters**:
   - `user_ids`: Comma-separated user IDs
@@ -231,7 +233,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 1. Get Listeners Feed
 - **Endpoint**: `GET /feed/listeners`
-- **Tags**: User Management, Feed
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Query Parameters**:
   - `online_only` (bool): Show only online users
@@ -276,7 +278,7 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 #### 2. Get Feed Statistics
 - **Endpoint**: `GET /feed/stats`
-- **Tags**: User Management, Feed
+- **Tags**: User Management
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Response**: `200` - Feed statistics
 ```json
@@ -287,6 +289,349 @@ A scalable FastAPI backend for the Saathii application with authentication, user
   "busy_listeners": 7
 }
 ```
+
+## Call Management
+
+### Overview
+- **Coin-based billing system** with real-time balance tracking
+- **Call lifecycle management** with automatic status updates
+- **User availability tracking** to prevent conflicts
+- **Comprehensive edge case handling** for dropped calls and insufficient funds
+
+### Call Endpoints
+
+#### 1. Start Call
+- **Endpoint**: `POST /calls/start`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Body**:
+```json
+{
+  "listener_id": 123,
+  "call_type": "audio",
+  "estimated_duration_minutes": 30
+}
+```
+- **Response**: `200` - Call started with cost estimation
+```json
+{
+  "call_id": 456,
+  "message": "Call started successfully",
+  "estimated_cost": 300,
+  "remaining_coins": 700,
+  "call_type": "audio",
+  "listener_id": 123,
+  "status": "ongoing"
+}
+```
+
+#### 2. End Call
+- **Endpoint**: `POST /calls/end`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Body**:
+```json
+{
+  "call_id": 456,
+  "reason": "completed"
+}
+```
+- **Response**: `200` - Call ended with final billing
+```json
+{
+  "call_id": 456,
+  "message": "Call ended successfully",
+  "duration_seconds": 1800,
+  "duration_minutes": 30,
+  "coins_spent": 300,
+  "user_money_spend": 300,
+  "listener_money_earned": 240,
+  "status": "completed"
+}
+```
+
+#### 3. Get Ongoing Call
+- **Endpoint**: `GET /calls/ongoing`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - Current ongoing call details
+
+#### 4. Get Call History
+- **Endpoint**: `GET /calls/history`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Query Parameters**:
+  - `page` (int): Page number (default: 1)
+  - `per_page` (int): Items per page (default: 20, max: 100)
+  - `call_type` (str): Filter by call type (audio, video)
+  - `status` (str): Filter by status (ongoing, completed, dropped)
+- **Response**: `200` - Paginated call history with statistics
+```json
+{
+  "calls": [
+    {
+      "call_id": 456,
+      "user_id": 123,
+      "listener_id": 789,
+      "call_type": "audio",
+      "start_time": "2024-01-15T10:30:00Z",
+      "end_time": "2024-01-15T11:00:00Z",
+      "duration_seconds": 1800,
+      "duration_minutes": 30,
+      "coins_spent": 300,
+      "user_money_spend": 300,
+      "listener_money_earned": 450,
+      "status": "completed",
+      "caller_username": "john_doe",
+      "listener_username": "jane_smith"
+    }
+  ],
+  "total_calls": 25,
+  "total_coins_spent": 1500,
+  "total_money_spent": 1500,
+  "total_earnings": 2250,
+  "page": 1,
+  "per_page": 20,
+  "has_next": true,
+  "has_previous": false
+}
+```
+
+#### 5. Get Call History Summary
+- **Endpoint**: `GET /calls/history/summary`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - Call history summary with statistics
+```json
+{
+  "summary": {
+    "total_calls": 25,
+    "calls_made": 15,
+    "calls_received": 10,
+    "completed_calls": 20,
+    "dropped_calls": 3,
+    "ongoing_calls": 2,
+    "audio_calls": 18,
+    "video_calls": 7,
+    "total_coins_spent": 1500,
+    "total_money_spent": 1500,
+    "total_earnings": 2250,
+    "total_duration_seconds": 54000,
+    "avg_duration_seconds": 2160
+  },
+  "recent_calls": [...],
+  "monthly_stats": [
+    {
+      "month": "2024-01-01T00:00:00Z",
+      "calls_count": 8,
+      "coins_spent": 400,
+      "earnings": 600
+    }
+  ]
+}
+```
+
+#### 6. Get Coin Balance
+- **Endpoint**: `GET /calls/balance`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - User's coin balance and transaction history
+```json
+{
+  "user_id": 123,
+  "current_balance": 500,
+  "total_earned": 1000,
+  "total_spent": 500
+}
+```
+
+#### 7. Emergency End Call
+- **Endpoint**: `POST /calls/emergency-end/{call_id}`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - Emergency call termination
+
+#### 8. Recharge Coins
+- **Endpoint**: `POST /calls/recharge`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Body**:
+```json
+{
+  "amount_rupees": 150,
+  "payment_method": "upi"
+}
+```
+- **Response**: `200` - Recharge successful
+```json
+{
+  "transaction_id": "RCH_123_1640995200",
+  "amount_rupees": 150,
+  "coins_added": 300,
+  "new_balance": 500,
+  "message": "Successfully recharged 300 coins for ₹150"
+}
+```
+
+#### 9. Get Recharge History
+- **Endpoint**: `GET /calls/recharge/history`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Query Parameters**:
+  - `page` (int): Page number (default: 1)
+  - `per_page` (int): Items per page (default: 20, max: 100)
+- **Response**: `200` - Paginated recharge history
+
+#### 10. Bill Call Minute
+- **Endpoint**: `POST /calls/bill-minute/{call_id}`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - Successfully billed for 1 minute
+```json
+{
+  "call_id": 456,
+  "coins_deducted": 10,
+  "remaining_coins": 290,
+  "total_coins_spent": 20,
+  "message": "Successfully billed for 1 minute"
+}
+```
+
+#### 11. Cleanup Calls
+- **Endpoint**: `POST /calls/cleanup`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - Call cleanup completed
+```json
+{
+  "message": "Call cleanup completed successfully"
+}
+```
+
+#### 12. Get Call System Status
+- **Endpoint**: `GET /calls/status`
+- **Tags**: Call Management
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Response**: `200` - System status and ongoing calls info
+```json
+{
+  "ongoing_calls": 5,
+  "busy_users": 10,
+  "redis_call_keys": 5,
+  "system_status": "healthy"
+}
+```
+
+#### 13. Get Call Rates
+- **Endpoint**: `GET /calls/rates`
+- **Tags**: Call Management
+- **Response**: `200` - Current call rates and recharge options
+```json
+{
+  "call_rates": {
+    "audio": {
+      "rate_per_minute": 10,
+      "minimum_charge": 10
+    },
+    "video": {
+      "rate_per_minute": 50,
+      "minimum_charge": 50
+    }
+  },
+  "recharge_options": {
+    "150": 300,
+    "300": 600,
+    "500": 1000,
+    "1000": 2000
+  },
+  "listener_earnings": {
+    "audio": 15,
+    "video": 75
+  }
+}
+```
+
+### Call Lifecycle
+
+1. **Call Start**:
+   - Validates user and listener availability
+   - Calculates maximum possible duration based on available coins
+   - Reserves minimum charge (10 coins for audio, 50 for video)
+   - **🔄 Auto-updates both users' presence status to busy**
+   - **📡 Broadcasts status changes to all connected clients**
+   - Creates call record in database
+   - Stores call info in Redis for real-time tracking
+
+2. **Call Duration**:
+   - **Per-minute billing**: Frontend calls `/calls/bill-minute/{call_id}` every minute
+   - **Automatic termination**: Call ends if insufficient coins
+   - Real-time tracking via Redis
+   - **📡 Continuous WebSocket broadcasts for presence changes**
+
+3. **Call End**:
+   - Calculates final duration and total cost
+   - Updates listener earnings (1.5x rate per minute)
+   - **🔄 Auto-updates both users' presence status to available**
+   - **📡 Broadcasts status changes to all connected clients**
+   - Creates transaction records
+   - Removes from Redis tracking
+
+### Automatic Presence Status Updates
+
+The system automatically manages user presence status during calls:
+
+- **Call Start**: Both caller and listener become `busy: true`
+- **Call End**: Both users become `busy: false` and `available: true`
+- **Real-time Broadcasting**: All status changes are broadcast via WebSocket
+- **Parallel Updates**: Both users' status updated simultaneously for consistency
+- **Automatic Cleanup**: Expired calls are cleaned up automatically
+
+### Edge Cases Handled
+
+#### 1. Insufficient Coins
+- **During Call Start**: Returns error with required vs available coins
+- **During Call**: Call automatically ends as "dropped" status
+- **Response**: Clear error messages and call termination
+
+#### 2. Call Dropped
+- **Technical Issues**: Emergency end call endpoint
+- **Network Problems**: Automatic cleanup after timeout
+- **User Disconnection**: Graceful handling with proper status updates
+
+#### 3. User Availability
+- **Already in Call**: Prevents multiple simultaneous calls
+- **Listener Busy**: Validates listener availability before starting
+- **Status Conflicts**: Automatic resolution and cleanup
+
+#### 4. Call Timeout
+- **Maximum Duration**: 2-hour limit with automatic termination
+- **Redis Cleanup**: Automatic removal of expired call data
+- **Status Recovery**: Proper cleanup on system restart
+
+### Coin Management
+
+- **Wallet Integration**: Uses existing `user_wallets` table
+- **Transaction Tracking**: All coin movements recorded in `user_transactions`
+- **Real-time Balance**: Live balance updates during calls
+- **Recharge System**: Users can add coins with real money
+- **Per-minute Billing**: Coins deducted every minute during calls
+- **Earnings Distribution**: Listeners earn 1.5x the call rate
+
+### Call Rates
+
+- **Audio Calls**: 10 coins per minute, 10 coin minimum
+- **Video Calls**: 50 coins per minute, 50 coin minimum
+- **Listener Earnings**: 15 coins/min (audio), 75 coins/min (video)
+- **Configurable**: Rates can be updated via configuration
+- **Transparent**: Rates exposed via API endpoint
+
+### Recharge Options
+
+- **₹150 = 300 coins** (2:1 ratio)
+- **₹300 = 600 coins** (2:1 ratio)
+- **₹500 = 1000 coins** (2:1 ratio)
+- **₹1000 = 2000 coins** (2:1 ratio)
+- **Transaction History**: Complete recharge tracking
 
 ## WebSocket Real-time Updates
 
@@ -460,25 +805,29 @@ interface WebSocketMessage {
   timestamp?: string;
 }
 
+interface UseWebSocketProps {
+  url: string;
+  onMessage?: (message: WebSocketMessage) => void;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  reconnectInterval?: number;
+}
+
 export const useWebSocket = ({
   url,
   onMessage,
   onConnect,
   onDisconnect,
   reconnectInterval = 5000
-}: {
-  url: string;
-  onMessage?: (message: WebSocketMessage) => void;
-  onConnect?: () => void;
-  onDisconnect?: () => void;
-  reconnectInterval?: number;
-}) => {
+}: UseWebSocketProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = async () => {
     try {
+      // Get access token from storage
       const token = await AsyncStorage.getItem('access_token');
       if (!token) {
         setConnectionError('No access token found');
@@ -489,6 +838,7 @@ export const useWebSocket = ({
       const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
+        console.log('WebSocket connected');
         setIsConnected(true);
         setConnectionError(null);
         onConnect?.();
@@ -497,6 +847,7 @@ export const useWebSocket = ({
       ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
+          console.log('WebSocket message received:', message);
           onMessage?.(message);
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -504,25 +855,35 @@ export const useWebSocket = ({
       };
 
       ws.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
         onDisconnect?.();
         
+        // Attempt to reconnect if not a clean close
         if (event.code !== 1000) {
-          setTimeout(() => connect(), reconnectInterval);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('Attempting to reconnect...');
+            connect();
+          }, reconnectInterval);
         }
       };
 
       ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
         setConnectionError('WebSocket connection error');
       };
 
       wsRef.current = ws;
     } catch (error) {
+      console.error('Error connecting to WebSocket:', error);
       setConnectionError('Failed to connect to WebSocket');
     }
   };
 
   const disconnect = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
     if (wsRef.current) {
       wsRef.current.close(1000, 'User disconnected');
       wsRef.current = null;
@@ -536,13 +897,355 @@ export const useWebSocket = ({
     }
   };
 
+  const ping = () => {
+    sendMessage({
+      type: 'ping',
+      timestamp: new Date().toISOString()
+    });
+  };
+
   useEffect(() => {
     connect();
-    return () => disconnect();
+    
+    return () => {
+      disconnect();
+    };
   }, []);
 
-  return { isConnected, connectionError, connect, disconnect, sendMessage };
+  return {
+    isConnected,
+    connectionError,
+    connect,
+    disconnect,
+    sendMessage,
+    ping
+  };
 };
+```
+
+### Feed Page with Real-time Updates
+
+```typescript
+// screens/FeedScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, RefreshControl, Alert } from 'react-native';
+import { useWebSocket } from '../hooks/useWebSocket';
+
+interface Listener {
+  user_id: number;
+  username: string;
+  profile_image_url?: string;
+  is_online: boolean;
+  is_available: boolean;
+  is_busy: boolean;
+  last_seen: string;
+  rating?: number;
+  bio?: string;
+  interests?: string[];
+}
+
+interface FeedResponse {
+  listeners: Listener[];
+  total_count: number;
+  online_count: number;
+  available_count: number;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+const FeedScreen = () => {
+  const [listeners, setListeners] = useState<Listener[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [feedStats, setFeedStats] = useState({
+    total_count: 0,
+    online_count: 0,
+    available_count: 0
+  });
+
+  // WebSocket for real-time updates
+  const { isConnected, connectionError, ping } = useWebSocket({
+    url: 'ws://localhost:8000/ws/feed',
+    onMessage: handleWebSocketMessage,
+    onConnect: () => {
+      console.log('Connected to feed updates');
+      // Send ping to keep connection alive
+      ping();
+    },
+    onDisconnect: () => {
+      console.log('Disconnected from feed updates');
+    }
+  });
+
+  // Handle incoming WebSocket messages
+  function handleWebSocketMessage(message: any) {
+    console.log('Received WebSocket message:', message);
+    
+    switch (message.type) {
+      case 'user_status_update':
+        handleUserStatusUpdate(message);
+        break;
+      case 'pong':
+        // Connection is alive, schedule next ping
+        setTimeout(ping, 30000); // Ping every 30 seconds
+        break;
+      case 'connection_established':
+        console.log('Feed WebSocket connection established');
+        break;
+      default:
+        console.log('Unknown message type:', message.type);
+    }
+  }
+
+  // Handle user status updates
+  const handleUserStatusUpdate = useCallback((message: any) => {
+    const { user_id, status } = message;
+    
+    setListeners(prevListeners => {
+      const updatedListeners = [...prevListeners];
+      const index = updatedListeners.findIndex(listener => listener.user_id === user_id);
+      
+      if (index !== -1) {
+        // Update existing listener
+        updatedListeners[index] = {
+          ...updatedListeners[index],
+          ...status
+        };
+      } else if (status.is_online) {
+        // Add new online listener to the top
+        updatedListeners.unshift({
+          user_id: status.user_id,
+          username: status.username,
+          profile_image_url: status.profile_image_url,
+          is_online: status.is_online,
+          is_available: status.is_available,
+          is_busy: status.is_busy,
+          last_seen: status.last_seen,
+          rating: 0,
+          bio: '',
+          interests: []
+        });
+      }
+      
+      return updatedListeners;
+    });
+
+    // Update feed stats
+    setFeedStats(prevStats => {
+      const newStats = { ...prevStats };
+      
+      if (status.is_online) {
+        newStats.online_count = Math.max(0, newStats.online_count + 1);
+        if (status.is_available) {
+          newStats.available_count = Math.max(0, newStats.available_count + 1);
+        }
+      } else {
+        newStats.online_count = Math.max(0, newStats.online_count - 1);
+        if (status.is_available) {
+          newStats.available_count = Math.max(0, newStats.available_count - 1);
+        }
+      }
+      
+      return newStats;
+    });
+  }, []);
+
+  // Load initial feed data
+  const loadFeedData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      const response = await fetch('http://localhost:8000/feed/listeners', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data: FeedResponse = await response.json();
+        setListeners(data.listeners);
+        setFeedStats({
+          total_count: data.total_count,
+          online_count: data.online_count,
+          available_count: data.available_count
+        });
+      } else {
+        Alert.alert('Error', 'Failed to load feed data');
+      }
+    } catch (error) {
+      console.error('Error loading feed data:', error);
+      Alert.alert('Error', 'Network error');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh feed data
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadFeedData();
+  };
+
+  useEffect(() => {
+    loadFeedData();
+  }, []);
+
+  // Render listener item
+  const renderListener = ({ item }: { item: Listener }) => (
+    <View style={styles.listenerItem}>
+      <View style={styles.listenerInfo}>
+        <Text style={styles.username}>{item.username}</Text>
+        <View style={styles.statusContainer}>
+          <View style={[
+            styles.statusDot, 
+            { backgroundColor: item.is_available ? '#4CAF50' : item.is_online ? '#FF9800' : '#9E9E9E' }
+          ]} />
+          <Text style={styles.statusText}>
+            {item.is_available ? 'Available' : item.is_online ? 'Online' : 'Offline'}
+          </Text>
+        </View>
+        {item.bio && <Text style={styles.bio}>{item.bio}</Text>}
+        {item.interests && item.interests.length > 0 && (
+          <Text style={styles.interests}>
+            Interests: {item.interests.join(', ')}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Listeners Feed</Text>
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsText}>
+            {feedStats.available_count} available • {feedStats.online_count} online
+          </Text>
+          <View style={[
+            styles.connectionStatus, 
+            { backgroundColor: isConnected ? '#4CAF50' : '#F44336' }
+          ]} />
+        </View>
+      </View>
+      
+      {connectionError && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            Connection Error: {connectionError}
+          </Text>
+        </View>
+      )}
+      
+      <FlatList
+        data={listeners}
+        renderItem={renderListener}
+        keyExtractor={(item) => item.user_id.toString()}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No listeners available</Text>
+        }
+      />
+    </View>
+  );
+};
+
+const styles = {
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5'
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0'
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold'
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  statsText: {
+    fontSize: 12,
+    color: '#666',
+    marginRight: 8
+  },
+  connectionStatus: {
+    width: 8,
+    height: 8,
+    borderRadius: 4
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 12,
+    margin: 16
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: 14
+  },
+  listenerItem: {
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginVertical: 4,
+    padding: 16,
+    borderRadius: 8,
+    elevation: 2
+  },
+  listenerInfo: {
+    flex: 1
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#666'
+  },
+  bio: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4
+  },
+  interests: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic'
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 50,
+    fontSize: 16,
+    color: '#666'
+  }
+};
+
+export default FeedScreen;
 ```
 
 ### Heartbeat Integration
@@ -571,10 +1274,34 @@ export const startHeartbeat = async () => {
 
   // Send heartbeat every 30 seconds
   const interval = setInterval(sendHeartbeat, 30000);
-  sendHeartbeat(); // Send initial heartbeat
+  
+  // Send initial heartbeat
+  sendHeartbeat();
   
   return () => clearInterval(interval);
 };
+```
+
+### App Integration
+
+```typescript
+// App.tsx
+import React, { useEffect } from 'react';
+import { startHeartbeat } from './utils/heartbeat';
+import FeedScreen from './screens/FeedScreen';
+
+export default function App() {
+  useEffect(() => {
+    // Start heartbeat when app becomes active
+    const stopHeartbeat = startHeartbeat();
+    
+    return () => {
+      stopHeartbeat();
+    };
+  }, []);
+
+  return <FeedScreen />;
+}
 ```
 
 ### Authentication Flow
@@ -633,6 +1360,71 @@ curl -X POST 'http://localhost:8000/users/me/heartbeat' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>'
 ```
 
+**Start Call**
+```bash
+curl -X POST 'http://localhost:8000/calls/start' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{"listener_id": 123, "call_type": "audio", "estimated_duration_minutes": 30}'
+```
+
+**End Call**
+```bash
+curl -X POST 'http://localhost:8000/calls/end' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{"call_id": 456, "reason": "completed"}'
+```
+
+**Get Coin Balance**
+```bash
+curl -X GET 'http://localhost:8000/calls/balance' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+```
+
+**Get Call History**
+```bash
+curl -X GET 'http://localhost:8000/calls/history?page=1&per_page=10&call_type=audio&status=completed' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+```
+
+**Get Call History Summary**
+```bash
+curl -X GET 'http://localhost:8000/calls/history/summary' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+```
+
+**Recharge Coins**
+```bash
+curl -X POST 'http://localhost:8000/calls/recharge' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{"amount_rupees": 150, "payment_method": "upi"}'
+```
+
+**Bill Call Minute**
+```bash
+curl -X POST 'http://localhost:8000/calls/bill-minute/456' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+```
+
+**Get Call Rates**
+```bash
+curl -X GET 'http://localhost:8000/calls/rates'
+```
+
+**Cleanup Calls**
+```bash
+curl -X POST 'http://localhost:8000/calls/cleanup' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+```
+
+**Get Call System Status**
+```bash
+curl -X GET 'http://localhost:8000/calls/status' \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+```
+
 ## Swagger Documentation
 
 The API includes comprehensive Swagger documentation available at:
@@ -674,6 +1466,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - ✅ **Scalable Architecture**: Redis pub/sub for multiple server instances
 - ✅ **Comprehensive API**: Full CRUD operations for users and presence
 - ✅ **Feed System**: Advanced filtering and pagination for listener discovery
+- ✅ **Call Management**: Complete call lifecycle with coin-based billing
+- ✅ **Coin System**: Wallet integration with transaction tracking
 - ✅ **Token Management**: Secure JWT with refresh token rotation
 - ✅ **Rate Limiting**: Built-in rate limiting for OTP requests
 - ✅ **Database Integration**: PostgreSQL with async support
@@ -689,4 +1483,14 @@ The API is designed specifically for React Native/Expo applications with:
 - **Feed system** with real-time listener discovery
 - **Comprehensive error handling** and reconnection logic
 
-For detailed React Native integration examples, see the `REACT_NATIVE_WEBSOCKET_EXAMPLE.md` file.
+## Key Features
+
+- ✅ **Real-time Updates**: Status changes are instantly reflected in the feed
+- ✅ **Automatic Reconnection**: WebSocket reconnects on connection loss
+- ✅ **Connection Status**: Visual indicator of WebSocket connection state
+- ✅ **Efficient Updates**: Only updates changed user data
+- ✅ **Heartbeat Integration**: Keeps user status active and triggers broadcasts
+- ✅ **Error Handling**: Graceful handling of connection errors
+- ✅ **Performance**: Optimized for mobile devices
+
+This implementation ensures that when a listener goes on a call and their status is updated via the heartbeat endpoint, all connected feed pages will receive the real-time update without needing to refresh the app! 🚀
