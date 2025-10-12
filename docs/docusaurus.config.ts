@@ -8,10 +8,11 @@ const config: Config = {
   title: 'Saathii Backend API',
   tagline: 'A scalable FastAPI backend for the Saathii application with authentication, user management, presence features, and real-time WebSocket updates.',
   favicon: 'img/favicon.ico',
+  logo: 'img/logo.png',
 
-  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
+  // Future flags for improved compatibility
   future: {
-    v4: true, // Improve compatibility with the upcoming Docusaurus v4
+    v4: true, // Improve compatibility with upcoming versions
   },
 
   // Set the production url of your site here
@@ -56,7 +57,7 @@ const config: Config = {
 
   themeConfig: {
     // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/logo.png',
     colorMode: {
       respectPrefersColorScheme: true,
     },
@@ -159,7 +160,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Saathii. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Saathii. All rights reserved.`,
     },
     prism: {
       theme: prismThemes.github,

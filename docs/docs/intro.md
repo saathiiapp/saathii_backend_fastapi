@@ -2,46 +2,35 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+# Welcome to Saathii Backend API
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Welcome to the comprehensive documentation for the Saathii Backend API - a scalable FastAPI backend designed for the Saathii application.
 
-## Getting Started
+## What is Saathii Backend API?
 
-Get started by **creating a new site**.
+The Saathii Backend API is a powerful, production-ready backend service that provides:
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+- **OTP-based Authentication** with phone number verification
+- **JWT Token Management** with refresh token rotation
+- **User Profile Management** with comprehensive user data
+- **Real-time Presence Tracking** with WebSocket support
+- **Feed System** for discovering listeners with real-time updates
+- **Listener Verification System** with audio sample uploads
+- **Call Management** with coin-based billing system
+- **Wallet & Earnings** system for listeners
+- **Favorites & Blocking** functionality
 
-### What you'll need
+## Quick Start
 
-- [Node.js](https://nodejs.org/en/download/) version 20.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+Ready to get started? Check out our [Getting Started Guide](./getting-started) to set up the API in minutes.
 
-## Generate a new site
+## API Documentation
 
-Generate a new Docusaurus site using the **classic template**.
+- **[Swagger UI](https://saathiiapp.com/docs)** - Interactive API testing
+- **[ReDoc](https://saathiiapp.com/redoc)** - Clean, readable documentation
 
-The classic template will automatically be added to your project after you run the command:
+## Need Help?
 
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+- Browse our comprehensive [API Reference](./api/authentication)
+- Check out our [Integration Guides](./guides/installation)
+- Visit our [GitHub repository](https://github.com/saathiiapp/saathii_backend_fastapi) for issues and discussions
