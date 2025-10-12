@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
         'api/websocket-realtime',
         'api/database-impact',
         'api/swagger-ui',
+        'api/api-tester',
       ],
     },
   ],
