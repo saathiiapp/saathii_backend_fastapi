@@ -66,7 +66,7 @@ To use the interactive API explorer:
 - `POST /users/me/heartbeat` - Send heartbeat
 - `GET /users/{user_id}/presence` - Get user presence
 - `GET /users/presence` - Get multiple users presence
-- `POST /admin/cleanup-presence` - Cleanup presence data
+- `GET /both/users/me` - Get current user profile
 
 ### 📰 Feeds
 - `GET /feed/listeners` - Get listeners feed with filters
@@ -94,7 +94,7 @@ To use the interactive API explorer:
 - `POST /calls/recharge` - Recharge coins
 - `GET /calls/recharge/history` - Get recharge history
 - `POST /calls/bill-minute/{call_id}` - Bill call minute
-- `POST /calls/cleanup` - Cleanup calls
+- `GET /both/calls/history` - Get call history
 - `GET /calls/status` - Get call system status
 - `GET /calls/rates` - Get call rates
 

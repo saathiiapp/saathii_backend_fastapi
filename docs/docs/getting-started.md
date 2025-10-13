@@ -129,7 +129,7 @@ If you need file upload functionality:
 - `POST /users/me/heartbeat` - Send heartbeat
 - `GET /users/{user_id}/presence` - Get user presence
 - `GET /users/presence` - Get multiple users presence
-- `POST /admin/cleanup-presence` - Cleanup presence data
+- `GET /both/users/me` - Get current user profile
 
 ### 📰 Feeds
 - `GET /feed/listeners` - Get listeners feed with filters

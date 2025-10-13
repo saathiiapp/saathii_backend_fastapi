@@ -378,7 +378,7 @@ This document explains what happens in the database for each API endpoint, which
   - Similar to regular call end but with emergency status
   - Updates call record, wallet balances, and user status
 
-### `POST /calls/cleanup`
+### `GET /both/calls/history`
 **Database Impact:** UPDATE + UPDATE
 - **Tables:** `user_calls`, `user_status` (multiple rows)
 - **Operations:**

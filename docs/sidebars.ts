@@ -34,7 +34,7 @@ const sidebars: SidebarsConfig = {
         'api/swagger-ui',
       ],
     },
-    // Background Tasks section removed
+    // Background tasks removed - functionality integrated into main API
   ],
 
   // Guides Sidebar
@@ -45,7 +45,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'guides/installation',
         'guides/s3-setup',
-        // 'guides/background-tasks-setup', // removed
+        // Background tasks setup guide removed
       ],
     },
     {

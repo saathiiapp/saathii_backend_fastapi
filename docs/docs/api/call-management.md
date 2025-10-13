@@ -381,52 +381,9 @@ curl -X POST 'https://saathiiapp.com/calls/recharge' \
 3. **Connection Management**: Handle WebSocket disconnections
 4. **Error Recovery**: Implement retry logic for failed operations
 
-## Per-Minute Coin Deduction
+## Call Management
 
-### Background Task: Automatic Coin Deduction
-
-Coins are automatically deducted every minute for all ongoing calls using a background task. This ensures fair billing without requiring external system integration.
-
-**How it works:**
-- Background service runs every minute via cron job
-- Automatically processes all ongoing calls
-- Deducts `rate_per_minute` for each active call
-- Ends calls when users have insufficient coins
-- Handles listener earnings and call settlement
-
-**Configuration:**
-- **Schedule**: Every minute (`* * * * *`)
-- **Script**: `background_tasks/scripts/coin_deduction.py`
-- **Logs**: `/var/log/saathii/coin_deduction.log`
-
-**Benefits:**
-- ✅ **Reliable**: No external dependencies
-- ✅ **Scalable**: Handles thousands of calls efficiently
-- ✅ **Automatic**: No manual intervention required
-- ✅ **Fair Billing**: Precise per-minute charging
-- ✅ **Error Handling**: Robust error recovery
-
-**Setup:**
-```bash
-# Run the setup script to configure cron jobs
-./background_tasks/scripts/setup_cron.sh
-```
-
-**Monitoring:**
-```bash
-# View real-time logs
-tail -f /var/log/saathii/coin_deduction.log
-
-# Check cron job status
-crontab -l | grep coin_deduction
-```
-
-**Integration Notes:**
-- This endpoint should be called every minute during active calls
-- It automatically handles call termination when users run out of coins
-- It updates both database and Redis cache
-- It broadcasts presence changes via WebSocket
-- It calculates fair listener earnings based on actual payment
+The call management system handles real-time call operations including starting, ending, and tracking call history with coin-based billing.
 
 **Error Handling:**
 - Returns detailed error information for each call

@@ -18,7 +18,7 @@ The Saathii Backend API is a powerful, production-ready backend service that pro
 - **Call Management** with coin-based billing system and per-minute charging
 - **Wallet & Earnings** system for listeners with withdrawal management
 - **Favorites & Blocking** functionality for user management
-- **Background Tasks** for automated coin deduction, presence cleanup, call management, and badge assignment with comprehensive monitoring and maintenance tools
+- **Real-time Features** with WebSocket support for live updates and presence tracking
 
 ## Quick Start
 
