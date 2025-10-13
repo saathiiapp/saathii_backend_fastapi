@@ -26,7 +26,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
-@router.post("/favorites/add", response_model=FavoriteActionResponse)
+@router.post("/customer/favorites", response_model=FavoriteActionResponse)
 async def add_favorite(
     data: AddFavoriteRequest,
     user=Depends(get_current_user_async)
@@ -85,7 +85,7 @@ async def add_favorite(
         )
 
 
-@router.get("/favorites", response_model=FavoritesResponse)
+@router.get("/customer/favorites", response_model=FavoritesResponse)
 async def get_favorites(
     page: int = 1,
     per_page: int = 20,

@@ -216,25 +216,4 @@ async def assign_basic_badge_for_today(listener_id: int) -> Optional[Dict]:
         
         return dict(result) if result else None
 
-async def get_badge_statistics(start_date: date, end_date: date) -> Dict:
-    """
-    Get badge distribution statistics for a date range
-    """
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        result = await conn.fetch(
-            """
-            SELECT 
-                badge,
-                COUNT(*) as count,
-                AVG(audio_rate_per_minute) as avg_audio_rate,
-                AVG(video_rate_per_minute) as avg_video_rate
-            FROM listener_badges 
-            WHERE date BETWEEN $1 AND $2
-            GROUP BY badge
-            ORDER BY badge
-            """,
-            start_date, end_date
-        )
-        
-        return [dict(row) for row in result]
+# get_badge_statistics removed (not used)

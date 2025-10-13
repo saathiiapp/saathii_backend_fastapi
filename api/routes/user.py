@@ -5,7 +5,6 @@ from datetime import datetime
 from api.clients.redis_client import redis_client
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
-from api.utils.realtime import broadcast_user_status_update, get_user_status_for_broadcast
 from api.schemas.user import (
     UserResponse, 
     EditUserRequest
@@ -31,7 +30,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
-@router.get("/users/me", response_model=UserResponse)
+@router.get("/both/users/me", response_model=UserResponse)
 async def get_me(user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -52,7 +51,7 @@ async def get_me(user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.put("/users/me", response_model=UserResponse)
+@router.put("/both/users/me", response_model=UserResponse)
 async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -80,7 +79,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.delete("/users/me")
+@router.delete("/both/users/me")
 async def delete_me(authorization: str = Header(...), user=Depends(get_current_user_async)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")

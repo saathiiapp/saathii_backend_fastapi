@@ -30,7 +30,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
-@router.get("/feed/listeners", response_model=ListenerFeedResponse)
+@router.get("/customer/feed/listeners", response_model=ListenerFeedResponse)
 async def get_listeners_feed(
     online_only: bool = False,
     available_only: bool = False,
@@ -76,7 +76,7 @@ async def get_listeners_feed(
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
             WHERE u.user_id != $1  -- Exclude current user
-            AND ub.blocked_id IS NULL  -- Exclude blocked users
+            AND ub.blocked_id IS NULL  -- Exclude users current user blocked
         """
 
         conditions = ["u.user_id != $1"]
@@ -113,6 +113,9 @@ async def get_listeners_feed(
             param_count += 1
             conditions.append(f"u.rating >= ${param_count}")
             params.append(min_rating)
+
+        # Also exclude users who have blocked the current user
+        conditions.append("NOT EXISTS (SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1)")
 
         if len(conditions) > 1:
             base_query += " AND " + " AND ".join(conditions[1:])
@@ -192,7 +195,7 @@ async def get_listeners_feed(
         )
 
 
-@router.get("/feed/users", response_model=UsersFeedResponse)
+@router.get("/listener/feed/users", response_model=UsersFeedResponse)
 async def get_users_feed(
     online_only: bool = False,
     available_only: bool = False,
@@ -238,7 +241,7 @@ async def get_users_feed(
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
             WHERE u.user_id != $1
-              AND ub.blocked_id IS NULL
+              AND ub.blocked_id IS NULL  -- Exclude users current user blocked
         """
 
         conditions = ["u.user_id != $1"]
@@ -246,6 +249,8 @@ async def get_users_feed(
         param_count = 1
 
         conditions.append("NOT EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true)")
+        # Also exclude users who have blocked the current user
+        conditions.append("NOT EXISTS (SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1)")
 
         if online_only:
             param_count += 1
@@ -353,7 +358,7 @@ async def get_users_feed(
         )
 
 
-@router.get("/feed/stats")
+@router.get("/both/feed/stats")
 async def get_feed_stats(user=Depends(get_current_user_async)):
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -363,6 +368,12 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
             WHERE u.user_id != $1
               AND EXISTS (
                 SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1
               )
             """,
             user["user_id"],
@@ -378,6 +389,12 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
               AND EXISTS (
                 SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
               )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1
+              )
             """,
             user["user_id"],
         )
@@ -392,6 +409,12 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
               AND EXISTS (
                 SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
               )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1
+              )
             """,
             user["user_id"],
         )
@@ -402,6 +425,12 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
             WHERE u.user_id != $1
               AND NOT EXISTS (
                 SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1
               )
             """,
             user["user_id"],
@@ -417,6 +446,12 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
               AND NOT EXISTS (
                 SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
               )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1
+              )
             """,
             user["user_id"],
         )
@@ -430,6 +465,12 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
               AND us.is_online = true AND us.is_busy = false
               AND NOT EXISTS (
                 SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1
               )
             """,
             user["user_id"],

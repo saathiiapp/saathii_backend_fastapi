@@ -56,9 +56,9 @@ async def check_listener_role(user_id: int):
                 detail="Only users with listener role can access this endpoint"
             )
 
-# USER WALLET APIs
+# CUSTOMER WALLET APIs
 
-@router.get("/balance", response_model=UserBalanceResponse)
+@router.get("/customer/wallet/balance", response_model=UserBalanceResponse)
 async def get_user_balance(user=Depends(get_current_user_async)):
     """Get user's coin balance"""
     user_id = user["user_id"]
@@ -92,7 +92,7 @@ async def get_user_balance(user=Depends(get_current_user_async)):
             balance_coins=balance_coins
         )
 
-@router.post("/add_coin", response_model=AddCoinResponse)
+@router.post("/customer/wallet/coins/add", response_model=AddCoinResponse)
 async def add_coin_to_wallet(
     data: AddCoinRequest,
     user=Depends(get_current_user_async)
@@ -168,7 +168,7 @@ async def add_coin_to_wallet(
             created_at=transaction['created_at']
         )
 
-@router.get("/recharge/history", response_model=RechargeHistoryResponse)
+@router.get("/customer/wallet/recharge/history", response_model=RechargeHistoryResponse)
 async def get_recharge_history(
     page: int = 1,
     per_page: int = 20,
@@ -268,7 +268,7 @@ async def get_recharge_history(
 
 # LISTENER WALLET APIs (Listener role required)
 
-@router.get("/listener/balance", response_model=ListenerBalanceResponse)
+@router.get("/listener/wallet/balance", response_model=ListenerBalanceResponse)
 async def get_listener_balance(user=Depends(get_current_user_async)):
     """Get listener's withdrawable money and total earnings"""
     user_id = user["user_id"]
@@ -295,7 +295,7 @@ async def get_listener_balance(user=Depends(get_current_user_async)):
             """
             SELECT COALESCE(SUM(listener_money_earned), 0)
             FROM user_calls 
-            WHERE listener_id = $1 AND status = 'completed'
+            WHERE listener_id = $1 AND status IN ('completed', 'dropped')
             """,
             user_id
         )
@@ -306,7 +306,7 @@ async def get_listener_balance(user=Depends(get_current_user_async)):
             total_earned=float(total_earned or 0)
         )
 
-@router.get("/listener/earnings", response_model=ListenerEarningsResponse)
+@router.get("/listener/wallet/earnings", response_model=ListenerEarningsResponse)
 async def get_listener_earnings(
     page: int = 1,
     per_page: int = 20,
@@ -340,7 +340,7 @@ async def get_listener_earnings(
                 uc.listener_money_earned,
                 uc.created_at
             FROM user_calls uc
-            WHERE uc.listener_id = $1 AND uc.status = 'completed'
+            WHERE uc.listener_id = $1 AND uc.status IN ('completed', 'dropped')
             ORDER BY uc.start_time DESC
             LIMIT $2 OFFSET $3
         """
@@ -349,13 +349,13 @@ async def get_listener_earnings(
         
         # Get total count
         total_calls = await conn.fetchval(
-            "SELECT COUNT(*) FROM user_calls WHERE listener_id = $1 AND status = 'completed'",
+            "SELECT COUNT(*) FROM user_calls WHERE listener_id = $1 AND status IN ('completed', 'dropped')",
             user_id
         )
         
         # Get total earnings
         total_earnings = await conn.fetchval(
-            "SELECT COALESCE(SUM(listener_money_earned), 0) FROM user_calls WHERE listener_id = $1 AND status = 'completed'",
+            "SELECT COALESCE(SUM(listener_money_earned), 0) FROM user_calls WHERE listener_id = $1 AND status IN ('completed', 'dropped')",
             user_id
         )
         
@@ -387,7 +387,7 @@ async def get_listener_earnings(
             has_previous=has_previous
         )
 
-@router.post("/listener/withdraw", response_model=WithdrawalResponse)
+@router.post("/listener/wallet/withdraw", response_model=WithdrawalResponse)
 async def request_withdrawal(
     data: WithdrawalRequest,
     user=Depends(get_current_user_async)
@@ -446,7 +446,7 @@ async def request_withdrawal(
             created_at=transaction['created_at']
         )
 
-@router.get("/listener/withdrawals", response_model=WithdrawalHistoryResponse)
+@router.get("/listener/wallet/withdrawals", response_model=WithdrawalHistoryResponse)
 async def get_withdrawal_history(
     page: int = 1,
     per_page: int = 20,
@@ -529,7 +529,7 @@ async def get_withdrawal_history(
             has_previous=has_previous
         )
 
-@router.put("/listener/bank-details", response_model=BankDetailsResponse)
+@router.put("/listener/wallet/bank-details", response_model=BankDetailsResponse)
 async def update_bank_details(
     data: BankDetailsUpdate,
     user=Depends(get_current_user_async)
@@ -566,7 +566,7 @@ async def update_bank_details(
             message="Bank details updated successfully"
         )
 
-@router.get("/listener/bank-details", response_model=BankDetailsResponse)
+@router.get("/listener/wallet/bank-details", response_model=BankDetailsResponse)
 async def get_bank_details_status(user=Depends(get_current_user_async)):
     """Check if listener has bank details configured (Listener only)"""
     user_id = user["user_id"]

@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from api.clients.redis_client import redis_client
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
-from api.utils.realtime import broadcast_user_status_update, get_user_status_for_broadcast
 from api.utils.badge_manager import get_listener_earning_rate
 from api.schemas.call import (
     StartCallRequest,
@@ -61,7 +60,7 @@ async def check_user_availability(user_id: int) -> bool:
 
 # API ENDPOINTS ONLY
 
-@router.post("/calls/start", response_model=StartCallResponse)
+@router.post("/customer/calls/start", response_model=StartCallResponse)
 async def start_call(data: StartCallRequest, user=Depends(get_current_user_async)):
     """Start a new call with a listener"""
     user_id = user["user_id"]
@@ -161,7 +160,7 @@ async def start_call(data: StartCallRequest, user=Depends(get_current_user_async
             status=CallStatus.ONGOING
         )
 
-@router.post("/calls/end", response_model=EndCallResponse)
+@router.post("/both/calls/end", response_model=EndCallResponse)
 async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
     """End an ongoing call"""
     user_id = user["user_id"]
@@ -228,28 +227,7 @@ async def end_call(data: EndCallRequest, user=Depends(get_current_user_async)):
             status=CallStatus.COMPLETED if data.reason != "dropped" else CallStatus.DROPPED
         )
 
-@router.get("/calls/ongoing", response_model=CallInfo)
-async def get_ongoing_call(user=Depends(get_current_user_async)):
-    """Get current ongoing call for the user"""
-    user_id = user["user_id"]
-    
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        call = await conn.fetchrow(
-            """
-            SELECT * FROM user_calls 
-            WHERE (user_id = $1 OR listener_id = $1) AND status = 'ongoing'
-            ORDER BY created_at DESC LIMIT 1
-            """,
-            user_id
-        )
-        
-        if not call:
-            raise HTTPException(status_code=404, detail="No ongoing call found")
-        
-        return CallInfo(**dict(call))
-
-@router.get("/calls/history", response_model=CallHistoryResponse)
+@router.get("/both/calls/history", response_model=CallHistoryResponse)
 async def get_call_history(
     page: int = 1,
     per_page: int = 20,
@@ -440,11 +418,4 @@ async def set_user_busy_status(user_id: int, is_busy: bool, wait_time: int = Non
                 """,
                 user_id
             )
-        
-        # Get updated status for broadcasting
-        status_data = await get_user_status_for_broadcast(user_id)
-        if status_data:
-            # Broadcast to all connected clients
-            await broadcast_user_status_update(user_id, status_data)
-            print(f"📞 User {user_id} status updated: busy={is_busy}, broadcasted to all clients")
 

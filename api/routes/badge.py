@@ -21,7 +21,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
-@router.get("/badge/current", response_model=BadgeCurrentResponse)
+@router.get("/listener/badge/current", response_model=BadgeCurrentResponse)
 async def get_current_badge(user=Depends(get_current_user_async)):
     """Get current badge for the authenticated listener for today (listeners only)."""
     user_id = user["user_id"]
@@ -41,9 +41,7 @@ async def get_current_badge(user=Depends(get_current_user_async)):
             raise HTTPException(status_code=403, detail="Only listeners can have badges")
 
     # Get current badge for today
-    from datetime import date
-    today = date.today()
-    badge_info = await get_current_listener_badge(user_id, today)
+    badge_info = await get_current_listener_badge(user_id)
 
     return {
         "listener_id": user_id,

@@ -27,7 +27,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
-@router.post("/block", response_model=BlockActionResponse)
+@router.post("/both/block", response_model=BlockActionResponse)
 async def block_user(
     data: BlockUserRequest,
     user=Depends(get_current_user_async)
@@ -85,7 +85,7 @@ async def block_user(
         )
 
 
-@router.delete("/block", response_model=BlockActionResponse)
+@router.delete("/both/block", response_model=BlockActionResponse)
 async def unblock_user(
     data: UnblockUserRequest,
     user=Depends(get_current_user_async)
@@ -135,7 +135,7 @@ async def unblock_user(
         )
 
 
-@router.get("/blocked", response_model=BlockedUsersResponse)
+@router.get("/both/blocked", response_model=BlockedUsersResponse)
 async def get_blocked_users(
     page: int = 1,
     per_page: int = 20,
