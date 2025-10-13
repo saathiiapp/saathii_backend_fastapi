@@ -995,6 +995,6 @@ export default WithdrawalScreen;
 
 ## Next Steps
 
-- Learn about [React Native Transactions](./react-native-transactions)
+- Learn about [React Native Wallets](./react-native-wallets)
 - Explore [React Native Calls](./react-native-calls)
 - Check out [React Native Feeds](./react-native-feeds)

@@ -329,7 +329,7 @@ After successful installation:
 1. **Configure Environment**: Set up your environment variables
 2. **Test API**: Try the API endpoints using the Swagger UI
 3. **Set up S3**: Configure AWS S3 for file uploads (optional)
-4. **Deploy**: Follow the [deployment guide](./deployment) for production setup
+4. **Deploy**: Follow the [deployment guide](./react-native-authentication) for production setup
 
 ## Getting Help
 

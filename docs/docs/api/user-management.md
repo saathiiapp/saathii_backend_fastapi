@@ -354,5 +354,5 @@ curl -X DELETE 'https://saathiiapp.com/users/me' \
 ## Next Steps
 
 - Learn about [Presence & Status API](./presence-status) for real-time user status
-- Explore [Feed System API](./feed-system) for discovering users
+- Explore [Feeds API](./feeds) for discovering users
 - Check out [Call Management API](./call-management) for call operations

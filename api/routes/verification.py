@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from api.schemas.verification import VerifyAudioRequest, VerifyAudioResponse
-from api.routes.auth import get_current_user
+from api.routes.user import get_current_user_async
 
 
 router = APIRouter(prefix="/verification", tags=["Verification"])
 
 
 @router.post("/listener/verification/verify-audio", response_model=VerifyAudioResponse)
-async def verify_audio(payload: VerifyAudioRequest, user: dict = Depends(get_current_user)):
+async def verify_audio(payload: VerifyAudioRequest, user: dict = Depends(get_current_user_async)):
     # Quick validation: ensure URL looks like an S3 object and is audio
     url = str(payload.audio_file_url)
     if "s3." not in url and "amazonaws.com" not in url:

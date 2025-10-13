@@ -179,15 +179,15 @@ If you need file upload functionality:
 
 1. **Explore the API**: Check out the [Swagger UI](https://saathiiapp.com/docs) to interact with the API
 2. **Read the Guides**: Follow our [integration guides](./guides/installation) for specific use cases
-3. **View Examples**: See [API examples](./guides/api-examples) for common operations
-4. **React Native Integration**: Learn how to integrate with [React Native apps](./guides/react-native-integration)
+3. **View Examples**: See [API examples](./guides/react-native-authentication) for common operations
+4. **React Native Integration**: Learn how to integrate with [React Native apps](./guides/react-native-authentication)
 
 ## 📚 Documentation Structure
 
 - **[API Reference](./api/authentication)**: Complete API endpoint documentation
 - **[Guides](./guides/installation)**: Step-by-step integration guides
-- **[Examples](./guides/api-examples)**: Code examples and use cases
-- **[Deployment](./guides/docker-deployment)**: Production deployment guides
+- **[Examples](./guides/react-native-authentication)**: Code examples and use cases
+- **[Deployment](./guides/installation)**: Production deployment guides
 
 ## 🆘 Need Help?
 

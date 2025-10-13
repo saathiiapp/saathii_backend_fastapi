@@ -1,7 +1,5 @@
 from fastapi import FastAPI
 from api.routes import auth, user, call, wallet, verification, feed, favorites, block, badge, status
-# Scheduler removed - using external cron jobs instead
-import asyncio
 
 app = FastAPI(
     title="Saathii Backend API",
@@ -37,6 +35,3 @@ app.include_router(wallet.router)
 app.include_router(call.router)
 app.include_router(verification.router)
 app.include_router(feed.router)
-
-
-# WebSocket/Realtime startup hooks removed
