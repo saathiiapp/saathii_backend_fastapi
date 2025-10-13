@@ -200,11 +200,10 @@ async def register_user(data: RegisterRequest):
         await conn.execute(
             """
             INSERT INTO user_status (user_id, is_online, last_seen, is_busy, updated_at, created_at)
-            VALUES ($1, $2, $3, $4, now(), now())
+            VALUES ($1, $2, now(), $3, now(), now())
             """,
             user["user_id"],
             True,  # is_online - user is online after registration
-            "now()",  # last_seen
             False,  # is_busy
         )
 
