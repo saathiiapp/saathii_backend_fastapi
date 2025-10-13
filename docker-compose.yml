@@ -46,6 +46,25 @@ services:
       # Service port (Nginx inside container)
       - "traefik.http.services.docs.loadbalancer.server.port=80"
 
+  dozzle:
+    image: amir20/dozzle:latest
+    ports:
+      - "9999:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+      # Router for HTTPS
+      - "traefik.http.routers.dozzle.rule=Host(`logs.saathiiapp.com`)"
+      - "traefik.http.routers.dozzle.entrypoints=websecure"
+      - "traefik.http.routers.dozzle.tls.certresolver=myresolver"
+      # Redirect HTTP -> HTTPS
+      - "traefik.http.routers.dozzle-http.rule=Host(`logs.saathiiapp.com`)"
+      - "traefik.http.routers.dozzle-http.entrypoints=web"
+      - "traefik.http.routers.dozzle-http.middlewares=redirect-to-https"
+      # Service port (Dozzle inside container)
+      - "traefik.http.services.dozzle.loadbalancer.server.port=8080"
+
   traefik:
     image: traefik:v2.10
     command:
