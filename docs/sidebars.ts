@@ -29,21 +29,12 @@ const sidebars: SidebarsConfig = {
         'api/favorites',
         'api/blocking',
         'api/verification',
-        'api/websocket-realtime',
+        // 'api/websocket-realtime', // removed
         'api/database-impact',
         'api/swagger-ui',
       ],
     },
-    {
-      type: 'category',
-      label: 'Background Tasks',
-      items: [
-        'background_tasks/index',
-        'background_tasks/background-tasks',
-        'background_tasks/background-tasks-api',
-        'background_tasks/background-tasks-summary',
-      ],
-    },
+    // Background Tasks section removed
   ],
 
   // Guides Sidebar
@@ -54,7 +45,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'guides/installation',
         'guides/s3-setup',
-        'guides/background-tasks-setup',
+        // 'guides/background-tasks-setup', // removed
       ],
     },
     {
