@@ -302,67 +302,25 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 ### Overview
 The listener verification system allows listeners to upload audio samples for verification before they can start working. This ensures quality control and authenticity of listeners on the platform.
 
-### Verification Endpoints
+### Verification Endpoint
 
-#### 1. Upload Audio File (Direct Upload)
-- **Endpoint**: `POST /verification/upload-audio-file`
+#### Verify Audio (single endpoint)
+- **Endpoint**: `POST /verification/verify-audio`
 - **Tags**: Listener Verification
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Content-Type**: `multipart/form-data`
-- **Body**: Audio file (mp3, wav, m4a, etc.)
-- **Max file size**: 10MB
-- **Response**: `200` - Verification record created
-```json
-{
-  "sample_id": 1,
-  "listener_id": 123,
-  "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/verification-audio/123/20240115_103000_abc12345.mp3",
-  "status": "pending",
-  "remarks": null,
-  "uploaded_at": "2024-01-15T10:30:00Z",
-  "reviewed_at": null
-}
-```
-
-#### 2. Upload Audio URL (External Upload)
-- **Endpoint**: `POST /verification/upload-audio-url`
-- **Tags**: Listener Verification
-- **Headers**: `Authorization: Bearer <access_token>`
+- **Headers**: `Authorization: Bearer <access_token>`, `Content-Type: application/json`
 - **Body**:
 ```json
 {
-  "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/verification-audio/123/20240115_103000_abc12345.mp3"
+  "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/path/to/audio.mp3"
 }
 ```
-- **Response**: `200` - Verification record created
-
-#### 3. Check Verification Status
-- **Endpoint**: `GET /verification/status`
-- **Tags**: Listener Verification
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Response**: `200` - Current verification status
+- **Response**:
 ```json
 {
-  "is_verified": false,
-  "verification_status": "pending",
-  "last_verification": {
-    "sample_id": 1,
-    "listener_id": 123,
-    "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/verification-audio/123/20240115_103000_abc12345.mp3",
-    "status": "pending",
-    "remarks": null,
-    "uploaded_at": "2024-01-15T10:30:00Z",
-    "reviewed_at": null
-  },
-  "message": "Verification status: pending"
+  "verified": true,
+  "reason": "basic_checks_passed"
 }
 ```
-
-#### 4. Get Verification History
-- **Endpoint**: `GET /verification/history`
-- **Tags**: Listener Verification
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Response**: `200` - Array of verification records
 
 ### Admin Verification Endpoints
 
@@ -1605,31 +1563,12 @@ curl -X GET 'http://localhost:8000/calls/status' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>'
 ```
 
-**Upload Audio File for Verification**
+**Verify Audio**
 ```bash
-curl -X POST 'http://localhost:8000/verification/upload-audio-file' \
-  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
-  -F 'audio_file=@/path/to/audio.mp3'
-```
-
-**Upload Audio URL for Verification**
-```bash
-curl -X POST 'http://localhost:8000/verification/upload-audio-url' \
+curl -X POST 'http://localhost:8000/verification/verify-audio' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
   -H 'Content-Type: application/json' \
-  -d '{"audio_file_url": "https://bucket.s3.region.amazonaws.com/audio.mp3"}'
-```
-
-**Check Verification Status**
-```bash
-curl -X GET 'http://localhost:8000/verification/status' \
-  -H 'Authorization: Bearer <ACCESS_TOKEN>'
-```
-
-**Get Verification History**
-```bash
-curl -X GET 'http://localhost:8000/verification/history' \
-  -H 'Authorization: Bearer <ACCESS_TOKEN>'
+  -d '{"audio_file_url": "https://bucket.s3.region.amazonaws.com/path/to/audio.mp3"}'
 ```
 
 **Get Pending Verifications (Admin)**
@@ -1656,8 +1595,7 @@ The API includes comprehensive Swagger documentation available at:
 
 1. **Authentication** - OTP verification, registration, and token management
 2. **User Management** - Profile management, presence tracking, and feed system
-3. **Listener Verification** - Audio sample uploads and verification workflow
-4. **Admin - Verification** - Admin review and approval of verification requests
+3. **Listener Verification** - Single audio verification endpoint
 5. **Call Management** - Call lifecycle, billing, and coin management
 6. **WebSocket** - Real-time WebSocket connections for live updates
 

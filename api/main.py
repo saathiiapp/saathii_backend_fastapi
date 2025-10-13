@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from api.routes import auth, user, websocket, call, wallet
+from api.routes import auth, user, websocket, call, wallet, verification, feed, favorites, block, badge, status
 from api.clients.websocket_manager import manager
 # Scheduler removed - using external cron jobs instead
 import asyncio
@@ -34,9 +34,15 @@ app = FastAPI(
 
 app.include_router(auth.router)
 app.include_router(user.router)
+app.include_router(block.router)
+app.include_router(badge.router)
+app.include_router(status.router)
+app.include_router(favorites.router)
 app.include_router(wallet.router)
 app.include_router(websocket.router)
 app.include_router(call.router)
+app.include_router(verification.router)
+app.include_router(feed.router)
 
 
 @app.on_event("startup")

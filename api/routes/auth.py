@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Header
+import re
 import time
 from api.clients.redis_client import redis_client
 from api.clients.jwt_handler import (
@@ -17,12 +18,41 @@ from api.schemas.auth import (
     RegisterRequest,
 )
 from api.utils.otp import generate_otp, send_otp_message
+from api.utils.badge_manager import assign_basic_badge_for_today
 
 router = APIRouter(tags=["Authentication"])
 
 
+# Simple validators for inputs used across auth endpoints
+PHONE_REGEX = re.compile(r"^\+?[1-9]\d{7,14}$")  # E.164-ish, 8-15 digits starting non-zero
+OTP_REGEX = re.compile(r"^\d{6}$")  # 6 numeric digits
+
+def _validate_phone(phone: str):
+    if not PHONE_REGEX.match(phone or ""):
+        raise HTTPException(status_code=400, detail="Invalid phone number format. Use E.164 like +919876543210")
+
+def _validate_otp(otp: str):
+    if not OTP_REGEX.match(otp or ""):
+        raise HTTPException(status_code=400, detail="Invalid OTP format. Must be 6 digits")
+
+
+@router.get("/auth/username-available")
+async def username_available(username: str):
+    # Validate username rules (same as register)
+    if not username or len(username) > 10:
+        return {"available": False, "message": "Invalid username. Max 10 characters"}
+    if not re.match(r"^[A-Za-z0-9_\.\-]+$", username):
+        return {"available": False, "message": "Invalid username. Use letters, numbers, underscores, dots, or hyphens"}
+
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        exists = await conn.fetchrow("SELECT 1 FROM users WHERE username=$1", username)
+        return {"available": not bool(exists)}
+
+
 @router.post("/auth/request_otp")
 async def request_otp(data: OTPRequest):
+    _validate_phone(data.phone)
     # Simple rate limiting: 5 requests per 15 minutes per phone
     rl_key = f"otp_rl:{data.phone}"
     count = await redis_client.incr(rl_key)
@@ -39,6 +69,7 @@ async def request_otp(data: OTPRequest):
 
 @router.post("/auth/resend_otp")
 async def resend_otp(data: OTPRequest):
+    _validate_phone(data.phone)
     # Short throttle: allow one resend every 60 seconds per phone
     throttle_key = f"otp_resend:{data.phone}"
     if await redis_client.get(throttle_key):
@@ -61,6 +92,8 @@ async def resend_otp(data: OTPRequest):
 
 @router.post("/auth/verify", response_model=VerifyResponse)
 async def verify_otp(data: VerifyRequest):
+    _validate_phone(data.phone)
+    _validate_otp(data.otp)
     stored_otp = await redis_client.get(f"otp:{data.phone}")
     if not stored_otp or stored_otp != data.otp:
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
@@ -104,6 +137,25 @@ async def register_user(data: RegisterRequest):
     phone = reg.get("phone")
     if not phone:
         raise HTTPException(status_code=400, detail="Invalid registration payload")
+    _validate_phone(phone)
+    
+    # Validate role early to provide a clear error message (DB also enforces via CHECK)
+    if data.role:
+        normalized_role = data.role.lower()
+        if normalized_role not in ("customer", "listener"):
+            raise HTTPException(status_code=400, detail="Invalid role. Allowed roles: customer, listener")
+    else:
+        normalized_role = None
+
+    # Validate username constraints (DB has VARCHAR(10))
+    if not data.username or len(data.username) > 10:
+        raise HTTPException(status_code=400, detail="Invalid username. Max 10 characters")
+    if not re.match(r"^[A-Za-z0-9_\.\-]+$", data.username):
+        raise HTTPException(status_code=400, detail="Invalid username. Use letters, numbers, underscores, dots, or hyphens")
+
+    # Validate required fields expected by DB
+    if data.dob is None:
+        raise HTTPException(status_code=400, detail="Date of birth is required")
 
     pool = await get_db_pool()
     async with pool.acquire() as conn:
@@ -111,6 +163,11 @@ async def register_user(data: RegisterRequest):
         existing = await conn.fetchrow("SELECT * FROM users WHERE phone=$1", phone)
         if existing:
             raise HTTPException(status_code=409, detail="User already exists")
+
+        # enforce unique username with a friendly message before insert
+        username_exists = await conn.fetchrow("SELECT 1 FROM users WHERE username=$1", data.username)
+        if username_exists:
+            raise HTTPException(status_code=409, detail="Username already exists")
 
         user = await conn.fetchrow(
             """
@@ -128,12 +185,16 @@ async def register_user(data: RegisterRequest):
             data.preferred_language,
         )
 
-        if data.role:
+        if normalized_role:
             await conn.execute(
                 "INSERT INTO user_roles (user_id, role) VALUES ($1,$2)",
                 user["user_id"],
-                data.role,
+                normalized_role,
             )
+            
+            # Assign Basic badge for today if the user is registering as a listener
+            if normalized_role == "listener":
+                await assign_basic_badge_for_today(user["user_id"])
 
         # Create user status record (user starts online after registration)
         await conn.execute(
@@ -145,6 +206,18 @@ async def register_user(data: RegisterRequest):
             True,  # is_online - user is online after registration
             "now()",  # last_seen
             False,  # is_busy
+        )
+
+        # Create wallet entry for the user (both user and listener roles get wallets)
+        await conn.execute(
+            """
+            INSERT INTO user_wallets (user_id, balance_coins, withdrawable_money, created_at, updated_at)
+            VALUES ($1, $2, $3, now(), now())
+            ON CONFLICT (user_id) DO NOTHING
+            """,
+            user["user_id"],
+            0,  # balance_coins - start with 0 coins
+            0.00,  # withdrawable_money - start with 0.00
         )
 
     subject = {"user_id": user["user_id"], "phone": user["phone"]}

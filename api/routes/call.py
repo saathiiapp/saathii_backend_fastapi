@@ -69,6 +69,19 @@ async def start_call(data: StartCallRequest, user=Depends(get_current_user_async
     # Validate listener exists and is available
     pool = await get_db_pool()
     async with pool.acquire() as conn:
+        # Enforce that only customers can start calls
+        has_customer_role = await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM user_roles 
+                WHERE user_id = $1 AND role = 'customer' AND active = true
+            )
+            """,
+            user_id,
+        )
+        if not has_customer_role:
+            raise HTTPException(status_code=403, detail="Only customers can start calls")
+
         listener = await conn.fetchrow(
             "SELECT user_id, username FROM users WHERE user_id = $1",
             data.listener_id

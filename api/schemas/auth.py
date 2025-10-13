@@ -30,6 +30,11 @@ class VerifyResponse(BaseModel):
     registration_token: Optional[str] = None
 
 
+class RoleEnum(str, Enum):
+    customer = "customer"
+    listener = "listener"
+
+
 class RegisterRequest(BaseModel):
     registration_token: str
     username: str
@@ -39,4 +44,4 @@ class RegisterRequest(BaseModel):
     interests: Optional[List[str]] = None
     profile_image_url: Optional[str] = None
     preferred_language: Optional[str] = None
-    role: Optional[str] = None
+    role: Optional[RoleEnum] = None

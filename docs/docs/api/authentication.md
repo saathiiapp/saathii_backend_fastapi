@@ -145,7 +145,7 @@ Complete user registration with profile information.
 - `interests` - Array of interest tags
 - `profile_image_url` - Profile image URL
 - `preferred_language` - Language preference (default: "en")
-- `role` - "listener" or "user"
+- `role` - "listener" or "customer"
 
 **Response:**
 ```json
@@ -154,6 +154,15 @@ Complete user registration with profile information.
   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
+
+**Behavior:**
+- Creates user profile with provided information
+- Assigns specified role (customer/listener) if provided
+- **Assigns Basic badge for today** if registering as a listener
+- Creates user status record (user starts online)
+- **Creates wallet entry** with 0 coins and 0.00 withdrawable money
+- Issues access and refresh tokens
+- Prevents duplicate registrations for same phone number
 
 ### Refresh Tokens
 

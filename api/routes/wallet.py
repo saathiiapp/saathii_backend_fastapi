@@ -103,16 +103,29 @@ async def add_coin_to_wallet(
     tx_type = data.tx_type
     money_amount = data.money_amount
     
-    # Validate transaction type
-    valid_tx_types = ["purchase", "bonus", "referral_bonus"]
-    if tx_type not in valid_tx_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid transaction type. Must be one of: {', '.join(valid_tx_types)}"
-        )
-    
+    # Require customer role to add/recharge coins
     pool = await get_db_pool()
     async with pool.acquire() as conn:
+        has_customer_role = await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM user_roles 
+                WHERE user_id = $1 AND role = 'customer' AND active = true
+            )
+            """,
+            user_id,
+        )
+        if not has_customer_role:
+            raise HTTPException(status_code=403, detail="Only customers can add or recharge coins")
+
+        # Validate transaction type
+        valid_tx_types = ["purchase", "bonus", "referral_bonus"]
+        if tx_type not in valid_tx_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid transaction type. Must be one of: {', '.join(valid_tx_types)}"
+            )
+        
         # Get or create wallet
         wallet = await conn.fetchrow(
             "SELECT wallet_id, balance_coins FROM user_wallets WHERE user_id = $1",
@@ -161,8 +174,23 @@ async def get_recharge_history(
     per_page: int = 20,
     user=Depends(get_current_user_async)
 ):
-    """Get user's wallet recharge transaction history (only purchase transactions)"""
+    """Get customer's wallet recharge transaction history (only purchase transactions)"""
     user_id = user["user_id"]
+    
+    # Require customer role to view recharge history
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        has_customer_role = await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM user_roles 
+                WHERE user_id = $1 AND role = 'customer' AND active = true
+            )
+            """,
+            user_id,
+        )
+        if not has_customer_role:
+            raise HTTPException(status_code=403, detail="Only customers can view recharge history")
     
     if page < 1:
         page = 1

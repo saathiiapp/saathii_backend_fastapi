@@ -185,6 +185,37 @@ async def get_listener_earning_rate(listener_id: int, call_type: str, target_dat
     else:
         return BADGE_RATES['basic'][call_type]
 
+async def assign_basic_badge_for_today(listener_id: int) -> Optional[Dict]:
+    """
+    Assign Basic badge to a new listener for today
+    This is used when a new listener registers
+    """
+    today = date.today()
+    badge = 'basic'
+    audio_rate = BADGE_RATES[badge]['audio']
+    video_rate = BADGE_RATES[badge]['video']
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Insert Basic badge for today
+        result = await conn.fetchrow(
+            """
+            INSERT INTO listener_badges 
+            (listener_id, date, badge, audio_rate_per_minute, video_rate_per_minute, assigned_at)
+            VALUES ($1, $2, $3, $4, $5, now())
+            ON CONFLICT (listener_id, date) 
+            DO UPDATE SET 
+                badge = EXCLUDED.badge,
+                audio_rate_per_minute = EXCLUDED.audio_rate_per_minute,
+                video_rate_per_minute = EXCLUDED.video_rate_per_minute,
+                updated_at = now()
+            RETURNING *
+            """,
+            listener_id, today, badge, audio_rate, video_rate
+        )
+        
+        return dict(result) if result else None
+
 async def get_badge_statistics(start_date: date, end_date: date) -> Dict:
     """
     Get badge distribution statistics for a date range

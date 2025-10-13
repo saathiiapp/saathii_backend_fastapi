@@ -13,7 +13,7 @@ The User Management API provides comprehensive user profile management, account 
 - **Profile Management**: Get, update, and delete user profiles
 - **Account Operations**: Complete user account lifecycle management
 - **Data Validation**: Comprehensive input validation and sanitization
-- **Role-based Access**: Support for different user roles (listener, user)
+- **Role-based Access**: Support for different user roles (listener, customer)
 
 ## Endpoints
 
@@ -163,9 +163,9 @@ Users with the "listener" role can:
 - Earn money from calls
 - Access listener-specific features
 
-### User Role
+### Customer Role
 
-Users with the "user" role can:
+Users with the "customer" role can:
 - Make calls to listeners
 - Use the feed system
 - Manage their profile

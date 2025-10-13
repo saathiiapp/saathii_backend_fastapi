@@ -44,12 +44,14 @@ This document explains what happens in the database for each API endpoint, which
 - **Redis:** Deletes OTP, stores refresh token
 
 ### `POST /auth/register`
-**Database Impact:** INSERT + INSERT
-- **Tables:** `users`, `user_roles`, `user_status`
+**Database Impact:** INSERT + INSERT + INSERT + INSERT (if listener)
+- **Tables:** `users`, `user_roles`, `user_status`, `user_wallets`, `listener_badges` (if listener)
 - **Operations:**
   - `INSERT INTO users (username, phone, sex, dob, bio, interests, preferred_language, created_at) VALUES (...)`
   - `INSERT INTO user_roles (user_id, role) VALUES ($1, $2)` - If role provided
+  - `INSERT INTO listener_badges (listener_id, date, badge, audio_rate_per_minute, video_rate_per_minute, assigned_at) VALUES ($1, today, 'basic', 1.0, 6.0, now())` - If role is 'listener'
   - `INSERT INTO user_status (user_id, is_online, last_seen, is_busy, updated_at, created_at) VALUES ($1, TRUE, now(), FALSE, now(), now())`
+  - `INSERT INTO user_wallets (user_id, balance_coins, withdrawable_money, created_at, updated_at) VALUES ($1, 0, 0.00, now(), now()) ON CONFLICT (user_id) DO NOTHING`
 - **Redis:** Stores refresh token
 
 ### `POST /auth/refresh`

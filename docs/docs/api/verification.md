@@ -6,7 +6,7 @@ description: Audio verification system for listeners
 
 # Listener Verification API
 
-The Listener Verification API provides a comprehensive audio verification system for listeners, allowing them to upload audio samples for review and verification.
+Single endpoint for quick audio verification using an S3 URL.
 
 ## Overview
 
@@ -16,52 +16,13 @@ The Listener Verification API provides a comprehensive audio verification system
 - **S3 Integration**: Secure file storage and management
 - **Role-based Access**: Listener-only verification system
 
-## Endpoints
+## Endpoint
 
-### Upload Audio File
+### Verify Audio
 
-Upload an audio file for listener verification.
+Verify that the provided S3 audio URL points to a valid audio file and return a quick verification status.
 
-**Endpoint:** `POST /verification/upload-audio-file`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-Content-Type: multipart/form-data
-```
-
-**Request Body:**
-- `audio_file`: Audio file (multipart/form-data)
-
-**File Requirements:**
-- **Format**: MP3, WAV, M4A, or other audio formats
-- **Size**: Maximum 10MB
-- **Content-Type**: Must be audio/*
-
-**Response:**
-```json
-{
-  "sample_id": 123,
-  "listener_id": 456,
-  "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
-  "status": "pending",
-  "remarks": null,
-  "uploaded_at": "2024-01-15T10:30:00Z",
-  "reviewed_at": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request` - Invalid file type or size
-- `403 Forbidden` - Only listeners can upload verification audio
-- `409 Conflict` - Already have a pending verification
-- `500 Internal Server Error` - S3 upload failed
-
-### Upload Audio URL
-
-Upload verification audio using an S3 URL (for external uploads).
-
-**Endpoint:** `POST /verification/upload-audio-url`
+**Endpoint:** `POST /verification/verify-audio`
 
 **Headers:**
 ```
@@ -72,173 +33,15 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3"
+  "audio_file_url": "https://bucket.s3.region.amazonaws.com/path/to/audio.mp3"
 }
-```
-
-**Fields:**
-- `audio_file_url`: S3 URL for the audio file
-
-**Response:**
-```json
-{
-  "sample_id": 123,
-  "listener_id": 456,
-  "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
-  "status": "pending",
-  "remarks": null,
-  "uploaded_at": "2024-01-15T10:30:00Z",
-  "reviewed_at": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request` - Invalid S3 URL format
-- `403 Forbidden` - Only listeners can upload verification audio
-- `409 Conflict` - Already have a pending verification
-
-### Get Verification Status
-
-Get the current verification status for the listener.
-
-**Endpoint:** `GET /verification/status`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
 ```
 
 **Response:**
 ```json
 {
-  "is_verified": false,
-  "verification_status": "pending",
-  "last_verification": {
-    "sample_id": 123,
-    "listener_id": 456,
-    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
-    "status": "pending",
-    "remarks": null,
-    "uploaded_at": "2024-01-15T10:30:00Z",
-    "reviewed_at": null
-  },
-  "message": "Verification status: pending"
-}
-```
-
-**Field Descriptions:**
-- `is_verified`: Whether the listener is verified
-- `verification_status`: Current status ("pending", "approved", "rejected")
-- `last_verification`: Details of the latest verification submission
-- `message`: Human-readable status message
-
-### Get Verification History
-
-Get the complete verification history for the listener.
-
-**Endpoint:** `GET /verification/history`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Response:**
-```json
-[
-  {
-    "sample_id": 123,
-    "listener_id": 456,
-    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
-    "status": "pending",
-    "remarks": null,
-    "uploaded_at": "2024-01-15T10:30:00Z",
-    "reviewed_at": null
-  },
-  {
-    "sample_id": 122,
-    "listener_id": 456,
-    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240114_150000_def456.mp3",
-    "status": "rejected",
-    "remarks": "Audio quality too low",
-    "uploaded_at": "2024-01-14T15:00:00Z",
-    "reviewed_at": "2024-01-14T16:30:00Z"
-  }
-]
-```
-
-## Admin Endpoints
-
-### Get Pending Verifications
-
-Get all pending verification requests (admin only).
-
-**Endpoint:** `GET /admin/verification/pending`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Query Parameters:**
-- `page`: Page number (default: 1)
-- `per_page`: Items per page (default: 20, max: 100)
-
-**Response:**
-```json
-[
-  {
-    "sample_id": 123,
-    "listener_id": 456,
-    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
-    "status": "pending",
-    "remarks": null,
-    "uploaded_at": "2024-01-15T10:30:00Z",
-    "reviewed_at": null
-  }
-]
-```
-
-### Review Verification
-
-Review and approve/reject verification request (admin only).
-
-**Endpoint:** `POST /admin/verification/review`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "sample_id": 123,
-  "status": "approved",
-  "remarks": "Audio quality is excellent"
-}
-```
-
-**Fields:**
-- `sample_id`: ID of the verification sample
-- `status`: Review decision ("approved" or "rejected")
-- `remarks`: Optional remarks for the listener
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Verification approved successfully with remarks: Audio quality is excellent",
-  "verification": {
-    "sample_id": 123,
-    "listener_id": 456,
-    "audio_file_url": "https://s3.amazonaws.com/bucket/verification-audio/456/20240115_103000_abc123.mp3",
-    "status": "approved",
-    "remarks": "Audio quality is excellent",
-    "uploaded_at": "2024-01-15T10:30:00Z",
-    "reviewed_at": "2024-01-15T11:00:00Z"
-  }
+  "verified": true,
+  "reason": "basic_checks_passed"
 }
 ```
 

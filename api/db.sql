@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- 2) Roles (a user can have multiple roles)
 CREATE TABLE IF NOT EXISTS user_roles (
   user_id   INT REFERENCES users(user_id) ON DELETE CASCADE,
-  role      VARCHAR(20) CHECK (role IN ('user','listener')),
+  role      VARCHAR(20) CHECK (role IN ('customer','listener')),
   active    BOOLEAN DEFAULT TRUE,
   assigned_at TIMESTAMPTZ DEFAULT now(),
   PRIMARY KEY (user_id, role)
@@ -123,16 +123,7 @@ CREATE TABLE IF NOT EXISTS listener_payout (
   created_at      TIMESTAMPTZ DEFAULT now()
 );
 
--- 12) Listener Verification
-CREATE TABLE IF NOT EXISTS listener_verification (
-  sample_id     SERIAL PRIMARY KEY,
-  listener_id   INT REFERENCES users(user_id) ON DELETE CASCADE,
-  audio_file_url      TEXT NOT NULL,   -- S3 URL for audio file
-  status        VARCHAR(20) CHECK (status IN ('pending','approved','rejected')) DEFAULT 'pending',
-  remarks       TEXT,            -- admin feedback if rejected
-  uploaded_at   TIMESTAMPTZ DEFAULT now(),
-  reviewed_at   TIMESTAMPTZ
-);
+-- 12) Listener Verification (removed)
 
 -- 13) User Rewards (generic table for referrals, streaks, etc.)
 CREATE TABLE IF NOT EXISTS user_rewards (

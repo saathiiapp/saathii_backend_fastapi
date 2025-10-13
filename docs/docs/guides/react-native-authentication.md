@@ -143,7 +143,7 @@ export interface RegisterRequest {
   interests?: string[];
   profile_image_url?: string;
   preferred_language?: string;
-  role?: 'listener' | 'user';
+  role?: 'listener' | 'customer';
 }
 
 export interface TokenPair {
@@ -704,7 +704,7 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({
     interests: [] as string[],
     profile_image_url: '',
     preferred_language: 'en',
-    role: 'user' as 'listener' | 'user',
+    role: 'customer' as 'listener' | 'customer',
   });
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
@@ -781,7 +781,7 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({
           onValueChange={(value) => setFormData({ ...formData, role: value })}
           style={styles.picker}
         >
-          <Picker.Item label="User" value="user" />
+          <Picker.Item label="Customer" value="customer" />
           <Picker.Item label="Listener" value="listener" />
         </Picker>
       </View>
