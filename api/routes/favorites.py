@@ -3,6 +3,7 @@ from datetime import datetime
 
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
+from api.utils.user_validation import validate_user_active
 from api.schemas.favorites import (
     AddFavoriteRequest,
     FavoriteUser,
@@ -23,6 +24,11 @@ async def get_current_user_async(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     if payload.get("type") != "access":
         raise HTTPException(status_code=401, detail="Access token required")
+    
+    # Validate user is active
+    user_id = payload.get("user_id")
+    await validate_user_active(user_id)
+    
     return payload
 
 

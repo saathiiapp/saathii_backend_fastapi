@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS user_status (
   last_seen     TIMESTAMPTZ DEFAULT now(),
   is_busy       BOOLEAN DEFAULT FALSE,   -- whether currently on a call
   wait_time     INT,                     -- if on call, expected duration in minutes
+  is_active     BOOLEAN DEFAULT TRUE,    -- whether user account is active
   updated_at    TIMESTAMPTZ DEFAULT now(),
   created_at      TIMESTAMPTZ DEFAULT now()
 );
@@ -123,7 +124,20 @@ CREATE TABLE IF NOT EXISTS listener_payout (
   created_at      TIMESTAMPTZ DEFAULT now()
 );
 
--- 12) Listener Verification (removed)
+-- 12) Listener Profile (verification, permissions, and call configuration)
+CREATE TABLE IF NOT EXISTS listener_profile (
+  listener_id                INT PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+  verification_status        VARCHAR(20) CHECK (verification_status IN ('pending', 'verified', 'rejected')) DEFAULT 'pending',
+  verified_on                TIMESTAMPTZ,
+  verification_message       TEXT,
+  listener_allowed_call_type TEXT[] CHECK (
+                                listener_allowed_call_type <@ ARRAY['audio','video','both']
+                              ),
+  listener_audio_call_enable BOOLEAN DEFAULT TRUE,
+  listener_video_call_enable BOOLEAN DEFAULT TRUE,
+  updated_at                 TIMESTAMPTZ DEFAULT now(),
+  created_at                 TIMESTAMPTZ DEFAULT now()
+);
 
 -- 13) User Rewards (generic table for referrals, streaks, etc.)
 CREATE TABLE IF NOT EXISTS user_rewards (

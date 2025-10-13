@@ -4,6 +4,7 @@ from typing import List
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
 from api.clients.redis_client import redis_client
+from api.utils.user_validation import validate_user_active
 """Realtime broadcasting removed."""
 from api.schemas.status import (
     UserStatusResponse,
@@ -27,6 +28,10 @@ async def get_current_user_async(authorization: str = Header(...)):
     jti = payload.get("jti")
     if user_id and jti and await redis_client.get(f"access:{user_id}:{jti}"):
         raise HTTPException(status_code=401, detail="Token has been revoked")
+    
+    # Validate user is active
+    await validate_user_active(user_id)
+    
     return payload
 
 

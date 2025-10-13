@@ -5,6 +5,7 @@ from datetime import datetime
 from api.clients.redis_client import redis_client
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
+from api.utils.user_validation import validate_user_active
 from api.schemas.user import (
     UserResponse, 
     EditUserRequest
@@ -27,6 +28,10 @@ async def get_current_user_async(authorization: str = Header(...)):
     jti = payload.get("jti")
     if user_id and jti and await redis_client.get(f"access:{user_id}:{jti}"):
         raise HTTPException(status_code=401, detail="Token has been revoked")
+    
+    # Validate user is active
+    await validate_user_active(user_id)
+    
     return payload
 
 
@@ -38,11 +43,13 @@ async def get_me(user=Depends(get_current_user_async)):
             """
             SELECT 
                 u.*,
-                array_agg(ur.role) FILTER (WHERE ur.active = TRUE) AS roles
+                array_agg(ur.role) FILTER (WHERE ur.active = TRUE) AS roles,
+                us.is_active
             FROM users u
             LEFT JOIN user_roles ur ON u.user_id = ur.user_id
+            LEFT JOIN user_status us ON u.user_id = us.user_id
             WHERE u.user_id = $1
-            GROUP BY u.user_id
+            GROUP BY u.user_id, us.is_active
             """,
             user["user_id"],
         )

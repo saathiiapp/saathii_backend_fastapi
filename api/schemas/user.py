@@ -22,6 +22,7 @@ class UserResponse(BaseModel):
     rating: Optional[int] = None
     country: Optional[str] = None
     roles: Optional[List[str]] = None
+    is_active: Optional[bool] = None
 
 
 class EditUserRequest(BaseModel):

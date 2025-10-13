@@ -199,12 +199,13 @@ async def register_user(data: RegisterRequest):
         # Create user status record (user starts online after registration)
         await conn.execute(
             """
-            INSERT INTO user_status (user_id, is_online, last_seen, is_busy, updated_at, created_at)
-            VALUES ($1, $2, now(), $3, now(), now())
+            INSERT INTO user_status (user_id, is_online, last_seen, is_busy, is_active, updated_at, created_at)
+            VALUES ($1, $2, now(), $3, $4, now(), now())
             """,
             user["user_id"],
             True,  # is_online - user is online after registration
             False,  # is_busy
+            True,   # is_active - user is active by default
         )
 
         # Create wallet entry for the user (both user and listener roles get wallets)
