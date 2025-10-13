@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 SECRET_KEY = os.getenv("JWT_SECRET", "changeme")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TTL_SECONDS = int(os.getenv("JWT_ACCESS_TTL", "1800"))  # 30m default
+ACCESS_TTL_SECONDS = int(os.getenv("JWT_ACCESS_TTL", "3600"))  # 60m default
 REFRESH_TTL_SECONDS = int(os.getenv("JWT_REFRESH_TTL", "2592000"))  # 30d default
 REGISTRATION_TTL_SECONDS = int(os.getenv("JWT_REGISTRATION_TTL", "600"))  # 10m default
 

@@ -88,6 +88,11 @@ async def delete_me(authorization: str = Header(...), user=Depends(get_current_u
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # Remove dependent rows first to satisfy FK constraints
+        # Remove wallet transactions and wallet explicitly (defensive even if CASCADE exists)
+        wallet_id = await conn.fetchval("SELECT wallet_id FROM user_wallets WHERE user_id=$1", user["user_id"])
+        if wallet_id:
+            await conn.execute("DELETE FROM user_transactions WHERE wallet_id=$1", wallet_id)
+        await conn.execute("DELETE FROM user_wallets WHERE user_id=$1", user["user_id"])
         await conn.execute("DELETE FROM user_roles WHERE user_id=$1", user["user_id"])
         await conn.execute("DELETE FROM users WHERE user_id=$1", user["user_id"])
 
