@@ -294,5 +294,4 @@ curl -X POST 'https://saathiiapp.com/admin/verification/review' \
 
 - Learn about [User Management API](./user-management) for profile management
 - Explore [Call Management API](./call-management) for making calls
-- Check out [S3 Setup Guide](./s3-setup) for file storage configuration
-- Access the [WebSocket Integration](./websocket-realtime) for real-time updates
+-- Check out [S3 Setup Guide](../guides/s3-setup) for file storage configuration

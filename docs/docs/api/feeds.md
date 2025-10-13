@@ -386,4 +386,3 @@ curl -X GET 'https://saathiiapp.com/feed/stats' \
 - Learn about [Favorites API](./favorites) for managing favorite listeners
 - Explore [Blocking API](./blocking) for user blocking functionality
 - Check out [Call Management API](./call-management) for making calls
-- Access the [WebSocket Integration](./websocket-realtime) for real-time updates

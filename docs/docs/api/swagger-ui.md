@@ -119,8 +119,7 @@ To use the interactive API explorer:
 - `POST /admin/verification/review` - Review verification (Admin)
 
 ### 🔌 WebSocket
-- `wss://saathiiapp.com/ws/feed` - Real-time feed updates
-- `wss://saathiiapp.com/ws/presence` - Real-time presence updates
+Removed.
 
 ## Tips for Testing
 
@@ -183,6 +182,6 @@ Be aware of the following rate limits:
 ## Need Help?
 
 - **API Documentation**: Check the detailed [API Reference](./authentication)
-- **Integration Guides**: Follow the [React Native Integration Guide](../guides/react-native-integration)
-- **Examples**: See [API Examples](../guides/api-examples)
+-- **Integration Guides**: Follow the React Native guides under `Guides`
+-- **Examples**: See examples within each API page
 - **GitHub Issues**: [Report issues](https://github.com/saathii/saathii-backend-api/issues)

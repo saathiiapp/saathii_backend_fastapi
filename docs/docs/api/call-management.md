@@ -436,6 +436,4 @@ crontab -l | grep coin_deduction
 
 ## Next Steps
 
-- Learn about [WebSocket Real-time API](./websocket-realtime) for live updates
-- Explore [Listener Verification API](./listener-verification) for verification process
-- Check out [S3 File Upload API](./s3-file-upload) for file management
+-- Explore [Verification API](./verification) for verification process

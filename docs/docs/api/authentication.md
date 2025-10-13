@@ -398,5 +398,4 @@ curl -X POST 'https://saathiiapp.com/auth/logout' \
 
 - Learn about [User Management API](./user-management) for profile operations
 - Explore [Presence & Status API](./presence-status) for real-time user status
-- Check out [WebSocket Integration](./websocket-realtime) for live updates
 - Access the [API Documentation](./swagger-ui) for interactive testing

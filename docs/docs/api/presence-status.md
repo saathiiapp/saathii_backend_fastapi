@@ -223,4 +223,3 @@ curl -X GET "https://saathiiapp.com/users/presence?user_ids=123,456,789" \
 
 - Learn about [User Management API](./user-management) for profile operations
 - Explore [Feed System API](./feeds) for discovering users
-- Check out [WebSocket Integration](./websocket-realtime) for live updates
