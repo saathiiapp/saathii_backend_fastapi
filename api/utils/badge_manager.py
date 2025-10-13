@@ -215,5 +215,3 @@ async def assign_basic_badge_for_today(listener_id: int) -> Optional[Dict]:
         )
         
         return dict(result) if result else None
-
-# get_badge_statistics removed (not used)

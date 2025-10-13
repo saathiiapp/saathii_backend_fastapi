@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from api.routes import auth, user, call, wallet, verification, feed, favorites, block, badge, status
+from api.routes import auth, user, call, wallet, feed, favorites, block, badge, status
 
 app = FastAPI(
     title="Saathii Backend API",
@@ -33,5 +33,4 @@ app.include_router(status.router)
 app.include_router(favorites.router)
 app.include_router(wallet.router)
 app.include_router(call.router)
-app.include_router(verification.router)
 app.include_router(feed.router)
