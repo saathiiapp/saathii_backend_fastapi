@@ -1,4 +1,7 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from api.routes import auth, user, call, wallet, feed, favorites, block, badge, status
 
 app = FastAPI(
@@ -25,6 +28,27 @@ app = FastAPI(
     ]
 )
 
+# Security middleware
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["saathiiapp.com", "*.saathiiapp.com", "localhost", "127.0.0.1"]
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://saathiiapp.com",
+        "https://docs.saathiiapp.com", 
+        "https://logs.saathiiapp.com",
+        "http://localhost:3000",  # For development
+        "http://localhost:8080",  # For development
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+# Include routers
 app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(block.router)
