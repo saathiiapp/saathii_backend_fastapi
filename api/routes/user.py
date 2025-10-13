@@ -101,6 +101,7 @@ async def delete_me(authorization: str = Header(...), user=Depends(get_current_u
             await conn.execute("DELETE FROM user_transactions WHERE wallet_id=$1", wallet_id)
         await conn.execute("DELETE FROM user_wallets WHERE user_id=$1", user["user_id"])
         await conn.execute("DELETE FROM user_roles WHERE user_id=$1", user["user_id"])
+        await conn.execute("DELETE FROM user_status WHERE user_id=$1", user["user_id"])
         await conn.execute("DELETE FROM users WHERE user_id=$1", user["user_id"])
 
     # Revoke all refresh tokens for the user
