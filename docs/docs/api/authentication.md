@@ -13,7 +13,7 @@ The Saathii Backend API uses OTP-based authentication with JWT tokens for secure
 - **OTP-based login** with optional registration step
 - **JWT token management** with refresh token rotation
 - **Rate limiting** for OTP requests
-- **Secure token storage** with Redis-based session management
+- Secure token storage with Redis-based session management
 
 ## Token Model
 
@@ -23,11 +23,25 @@ The Saathii Backend API uses OTP-based authentication with JWT tokens for secure
 
 ## Endpoints
 
+### Check Username Availability
+
+Check if a username is available.
+
+**Endpoint:** `GET /auth/both/username-available?username=<name>`
+
+**Response:**
+```json
+{
+  "available": true,
+  "message": ""
+}
+```
+
 ### Request OTP
 
 Send an OTP to a phone number for authentication.
 
-**Endpoint:** `POST /auth/request_otp`
+**Endpoint:** `POST /auth/both/otp/request`
 
 **Request Body:**
 ```json
@@ -53,7 +67,7 @@ Send an OTP to a phone number for authentication.
 
 Resend OTP to a phone number.
 
-**Endpoint:** `POST /auth/resend_otp`
+**Endpoint:** `POST /auth/both/otp/resend`
 
 **Request Body:**
 ```json
@@ -80,7 +94,7 @@ Resend OTP to a phone number.
 
 Verify the OTP and get authentication tokens.
 
-**Endpoint:** `POST /auth/verify`
+**Endpoint:** `POST /auth/both/otp/verify`
 
 **Request Body:**
 ```json
@@ -117,7 +131,7 @@ Verify the OTP and get authentication tokens.
 
 Complete user registration with profile information.
 
-**Endpoint:** `POST /auth/register`
+**Endpoint:** `POST /auth/both/register`
 
 **Request Body:**
 ```json
@@ -168,7 +182,7 @@ Complete user registration with profile information.
 
 Get a new access token using a refresh token.
 
-**Endpoint:** `POST /auth/refresh`
+**Endpoint:** `POST /auth/both/refresh`
 
 **Request Body:**
 ```json
@@ -194,7 +208,7 @@ Get a new access token using a refresh token.
 
 Logout and invalidate all tokens for the user.
 
-**Endpoint:** `POST /auth/logout`
+**Endpoint:** `POST /auth/both/logout`
 
 **Headers:**
 ```

@@ -22,7 +22,7 @@ Single endpoint for quick audio verification using an S3 URL.
 
 Verify that the provided S3 audio URL points to a valid audio file and return a quick verification status.
 
-**Endpoint:** `POST /verification/verify-audio`
+**Endpoint:** `POST /listener/verification/verify-audio`
 
 **Headers:**
 ```

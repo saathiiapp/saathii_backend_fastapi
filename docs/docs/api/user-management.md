@@ -21,7 +21,7 @@ The User Management API provides comprehensive user profile management, account 
 
 Retrieve the current user's profile information.
 
-**Endpoint:** `GET /users/me`
+**Endpoint:** `GET /both/users/me`
 
 **Headers:**
 ```
@@ -64,7 +64,7 @@ Authorization: Bearer <access_token>
 
 Update the current user's profile information.
 
-**Endpoint:** `PUT /users/me`
+**Endpoint:** `PUT /both/users/me`
 
 **Headers:**
 ```
@@ -130,7 +130,7 @@ Content-Type: application/json
 
 Permanently delete the current user's account.
 
-**Endpoint:** `DELETE /users/me`
+**Endpoint:** `DELETE /both/users/me`
 
 **Headers:**
 ```

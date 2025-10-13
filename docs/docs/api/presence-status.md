@@ -13,7 +13,6 @@ The Presence & Status API provides real-time user presence tracking, status mana
 - **Status Management**: Get and update user online/busy status
 - **Presence Tracking**: Real-time presence information for users
 - **Heartbeat System**: Keep users online with periodic heartbeats
-- **Admin Functions**: Presence cleanup and maintenance
 
 ## Endpoints
 
@@ -21,7 +20,7 @@ The Presence & Status API provides real-time user presence tracking, status mana
 
 Retrieve the current user's presence status.
 
-**Endpoint:** `GET /users/me/status`
+**Endpoint:** `GET /both/status/me`
 
 **Headers:**
 ```
@@ -50,50 +49,11 @@ Authorization: Bearer <access_token>
 - `created_at`: Status record creation time
 - `updated_at`: Last status update time
 
-### Update My Status
-
-Update the current user's presence status.
-
-**Endpoint:** `PUT /users/me/status`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "is_online": true,
-  "is_busy": false,
-  "wait_time": 30
-}
-```
-
-**Field Descriptions:**
-- `is_online` (optional): Set online status
-- `is_busy` (optional): Set busy status
-- `wait_time` (optional): Set expected call duration in minutes
-
-**Response:**
-```json
-{
-  "user_id": 123,
-  "is_online": true,
-  "is_busy": false,
-  "wait_time": 30,
-  "last_seen": "2024-01-15T10:30:00Z",
-  "created_at": "2024-01-15T10:30:00Z",
-  "updated_at": "2024-01-15T10:30:00Z"
-}
-```
-
 ### Send Heartbeat
 
 Send a heartbeat to keep the user online and update last seen time.
 
-**Endpoint:** `POST /users/me/heartbeat`
+**Endpoint:** `POST /both/status/heartbeat`
 
 **Headers:**
 ```
@@ -110,99 +70,6 @@ Authorization: Bearer <access_token>
 **Usage:**
 - Send every 30-60 seconds to maintain online status
 - Automatically updates `last_seen` timestamp
-- Broadcasts status update to connected clients
-
-### Get User Presence
-
-Get another user's presence status.
-
-**Endpoint:** `GET /users/{user_id}/presence`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Path Parameters:**
-- `user_id`: Target user's ID
-
-**Response:**
-```json
-{
-  "user_id": 456,
-  "username": "jane_smith",
-  "is_online": true,
-  "is_busy": false,
-  "wait_time": null,
-  "last_seen": "2024-01-15T10:25:00Z"
-}
-```
-
-### Get Multiple Users Presence
-
-Get presence status for multiple users at once.
-
-**Endpoint:** `GET /users/presence`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Query Parameters:**
-- `user_ids`: Comma-separated list of user IDs (max 50)
-
-**Example Request:**
-```
-GET /users/presence?user_ids=123,456,789
-```
-
-**Response:**
-```json
-[
-  {
-    "user_id": 123,
-    "username": "alice",
-    "is_online": true,
-    "is_busy": false,
-    "wait_time": null,
-    "last_seen": "2024-01-15T10:30:00Z"
-  },
-  {
-    "user_id": 456,
-    "username": "jane_smith",
-    "is_online": true,
-    "is_busy": true,
-    "wait_time": 30,
-    "last_seen": "2024-01-15T10:25:00Z"
-  }
-]
-```
-
-### Cleanup Presence (Admin)
-
-Manually trigger presence cleanup for inactive users.
-
-**Endpoint:** `POST /admin/cleanup-presence`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Response:**
-```json
-{
-  "message": "Presence cleanup completed",
-  "users_marked_offline": 15,
-  "busy_status_cleared": 3
-}
-```
-
-**Cleanup Actions:**
-- Marks users offline if inactive for 5+ minutes
-- Clears expired busy status
-- Updates last seen timestamps
 
 ## Status Types
 
@@ -214,40 +81,6 @@ Authorization: Bearer <access_token>
 - `is_busy: true` - User is in a call or unavailable
 - `is_busy: false` - User is available for calls
 - `wait_time` - Optional expected call duration in minutes
-
-## Real-time Updates
-
-### WebSocket Integration
-
-Presence updates are broadcast in real-time via WebSocket:
-
-**Connection:**
-```
-wss://your-api-domain.com/ws/presence?token=<access_token>
-```
-
-**Message Format:**
-```json
-{
-  "type": "presence_update",
-  "data": {
-    "user_id": 123,
-    "is_online": true,
-    "is_busy": false,
-    "last_seen": "2024-01-15T10:30:00Z"
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-### Update Triggers
-
-Status updates are broadcast when:
-- User goes online/offline
-- User becomes busy/available
-- Heartbeat is received
-- Call starts/ends
-- Manual status update
 
 ## Error Responses
 

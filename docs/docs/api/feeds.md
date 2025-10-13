@@ -14,7 +14,7 @@ The Feed System API provides comprehensive user discovery functionality, allowin
 - **Real-time Status**: Live availability and presence information
 - **Filtering Options**: Advanced filtering by interests, language, rating, and availability
 - **Pagination**: Efficient pagination for large result sets
-- **Statistics**: Real-time counts and statistics
+- **Statistics**: Counts and statistics
 
 ## Endpoints
 
@@ -22,7 +22,7 @@ The Feed System API provides comprehensive user discovery functionality, allowin
 
 Get a paginated list of listeners with their details and real-time status.
 
-**Endpoint:** `GET /feed/listeners`
+**Endpoint:** `GET /customer/feed/listeners`
 
 **Headers:**
 ```
@@ -97,9 +97,9 @@ GET /feed/listeners?online_only=true&interests=music,tech&page=1&per_page=10
 
 ### Get Feed Statistics
 
-Get real-time statistics about listeners in the feed.
+Get statistics about listeners in the feed.
 
-**Endpoint:** `GET /feed/stats`
+**Endpoint:** `GET /both/feed/stats`
 
 **Headers:**
 ```
@@ -173,43 +173,6 @@ The feed is automatically sorted by:
 2. **Availability**: Available users (not busy) appear before busy users
 3. **Rating**: Higher rated users appear first
 4. **Recent Activity**: More recently active users appear first
-
-## Real-time Updates
-
-### WebSocket Integration
-
-Feed updates are broadcast in real-time via WebSocket:
-
-**Connection:**
-```
-wss://your-api-domain.com/ws/feed?token=<access_token>
-```
-
-**Message Types:**
-- `user_status_update` - User presence changed
-- `listener_online` - Listener came online
-- `listener_offline` - Listener went offline
-- `listener_busy` - Listener became busy
-- `listener_available` - Listener became available
-
-**Example Message:**
-```json
-{
-  "type": "user_status_update",
-  "user_id": 123,
-  "status": {
-    "user_id": 123,
-    "username": "jane_smith",
-    "profile_image_url": "https://example.com/profile.jpg",
-    "is_online": true,
-    "last_seen": "2024-01-15T10:30:00Z",
-    "is_busy": false,
-    "wait_time": null,
-    "is_available": true
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
 
 ## Error Handling
 

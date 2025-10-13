@@ -21,7 +21,7 @@ The Wallets API provides comprehensive wallet management, coin operations, and f
 
 Retrieve the current user's wallet balance and financial summary.
 
-**Endpoint:** `GET /wallet/balance`
+**Endpoint:** `GET /customer/wallet/balance`
 
 **Headers:**
 ```
@@ -44,7 +44,7 @@ Authorization: Bearer <access_token>
 
 Add coins to the user's wallet with transaction tracking.
 
-**Endpoint:** `POST /add_coin`
+**Endpoint:** `POST /customer/wallet/coins/add`
 
 **Headers:**
 ```
@@ -89,7 +89,7 @@ Content-Type: application/json
 
 Get listener's withdrawable money and total earnings.
 
-**Endpoint:** `GET /listener/balance`
+**Endpoint:** `GET /listener/wallet/balance`
 
 **Headers:**
 ```
@@ -111,7 +111,7 @@ Authorization: Bearer <access_token>
 
 Request withdrawal from wallet to bank account.
 
-**Endpoint:** `POST /listener/withdraw`
+**Endpoint:** `POST /listener/wallet/withdraw`
 
 **Headers:**
 ```
@@ -145,7 +145,7 @@ Content-Type: application/json
 
 Get user's withdrawal history.
 
-**Endpoint:** `GET /listener/withdrawals`
+**Endpoint:** `GET /listener/wallet/withdrawals`
 
 **Headers:**
 ```
@@ -180,7 +180,7 @@ Authorization: Bearer <access_token>
 
 Update bank account details for withdrawals.
 
-**Endpoint:** `PUT /listener/bank-details`
+**Endpoint:** `PUT /listener/wallet/bank-details`
 
 **Headers:**
 ```
@@ -210,7 +210,7 @@ Content-Type: application/json
 
 Check if user has bank details configured.
 
-**Endpoint:** `GET /listener/bank-details`
+**Endpoint:** `GET /listener/wallet/bank-details`
 
 **Headers:**
 ```
@@ -264,7 +264,7 @@ Authorization: Bearer <access_token>
 ```typescript
 // Get wallet balance
 const getWalletBalance = async (token: string) => {
-  const response = await fetch('https://saathiiapp.com/balance', {
+  const response = await fetch('https://saathiiapp.com/customer/wallet/balance', {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -275,7 +275,7 @@ const getWalletBalance = async (token: string) => {
 
 // Add coins to wallet
 const addCoins = async (token: string, coins: number, txType: string = 'purchase', moneyAmount: number = 0) => {
-  const response = await fetch('https://saathiiapp.com/add_coin', {
+  const response = await fetch('https://saathiiapp.com/customer/wallet/coins/add', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -292,7 +292,7 @@ const addCoins = async (token: string, coins: number, txType: string = 'purchase
 
 // Request withdrawal
 const requestWithdrawal = async (token: string, amount: number) => {
-  const response = await fetch('https://saathiiapp.com/listener/withdraw', {
+  const response = await fetch('https://saathiiapp.com/listener/wallet/withdraw', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
