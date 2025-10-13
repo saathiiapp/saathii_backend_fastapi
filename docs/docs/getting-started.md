@@ -163,13 +163,10 @@ If you need file upload functionality:
 - `GET /blocked` - Get blocked users list
 - `GET /block/check/{user_id}` - Check block status
 
-### ✅ Verification
-- `POST /verification/upload-audio-file` - Upload verification audio file
-- `POST /verification/upload-audio-url` - Upload verification audio URL
-- `GET /verification/status` - Get verification status
-- `GET /verification/history` - Get verification history
-- `GET /admin/verification/pending` - Get pending verifications (Admin)
-- `POST /admin/verification/review` - Review verification (Admin)
+### ✅ Verification & Preferences
+- `GET /listener/verification/status` - Get listener verification status
+- `GET /listener/preferences` - Get listener call preferences
+- `PUT /listener/preferences` - Update listener call preferences
 
 ### 🔌 WebSocket
 - `wss://saathiiapp.com/ws/feed` - Real-time feed updates

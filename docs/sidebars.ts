@@ -29,6 +29,7 @@ const sidebars: SidebarsConfig = {
         'api/favorites',
         'api/blocking',
         'api/verification',
+        'api/listener-verification',
         // 'api/websocket-realtime', // removed
         'api/database-impact',
         'api/swagger-ui',

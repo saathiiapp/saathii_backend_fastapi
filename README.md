@@ -236,6 +236,15 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 
 ## Feed System
 
+### Overview
+The feed system allows customers to discover and connect with verified listeners. Only verified listeners appear in the feed, ensuring quality and authenticity.
+
+### Key Features
+- **Verified Listeners Only**: Only listeners with `verification_status = true` appear in feeds
+- **Real-time Updates**: Live status updates via WebSocket
+- **Call Preferences**: Shows listener's audio/video call availability
+- **Advanced Filtering**: Filter by online status, availability, language, interests, and rating
+
 ### Feed Endpoints
 
 #### 1. Get Listeners Feed
@@ -270,7 +279,10 @@ A scalable FastAPI backend for the Saathii application with authentication, user
       "last_seen": "2024-01-15T10:30:00Z",
       "is_busy": false,
       "wait_time": null,
-      "is_available": true
+      "is_available": true,
+      "listener_allowed_call_type": ["audio", "video"],
+      "listener_audio_call_enable": true,
+      "listener_video_call_enable": false
     }
   ],
   "total_count": 150,
@@ -300,78 +312,94 @@ A scalable FastAPI backend for the Saathii application with authentication, user
 ## Listener Verification
 
 ### Overview
-The listener verification system allows listeners to upload audio samples for verification before they can start working. This ensures quality control and authenticity of listeners on the platform.
+The listener verification system ensures quality control and authenticity of listeners on the platform. Listeners must be verified before they can access any listener-specific APIs or appear in customer feeds.
 
-### Verification Endpoint
+### Key Features
+- **Live Audio Capture**: Listeners provide audio samples during registration
+- **Boolean Verification Status**: Simple true/false verification system
+- **Manual Admin Review**: Admins manually verify listeners by updating database
+- **API Protection**: All listener APIs require verification
+- **Feed Filtering**: Only verified listeners appear in customer feeds
 
-#### Verify Audio (single endpoint)
-- **Endpoint**: `POST /verification/verify-audio`
-- **Tags**: Listener Verification
-- **Headers**: `Authorization: Bearer <access_token>`, `Content-Type: application/json`
+### Registration with Audio
+When registering as a listener, include the live audio sample:
+
+#### Register Listener
+- **Endpoint**: `POST /auth/both/register`
 - **Body**:
 ```json
 {
-  "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/path/to/audio.mp3"
+  "registration_token": "eyJ...",
+  "username": "listener123",
+  "role": "listener",
+  "live_audio_url": "https://bucket.s3.region.amazonaws.com/audio/sample.mp3",
+  "sex": "female",
+  "dob": "1990-01-01",
+  "bio": "Professional listener...",
+  "interests": ["music", "counseling"],
+  "preferred_language": "en"
 }
 ```
+
+### Verification Status
+
+#### Get Verification Status
+- **Endpoint**: `GET /listener/verification/status`
+- **Headers**: `Authorization: Bearer <access_token>`
 - **Response**:
 ```json
 {
-  "verified": true,
-  "reason": "basic_checks_passed"
+  "verification_status": false,
+  "verification_message": "Verification pending admin review",
+  "verified_on": null,
+  "latest_verification": null
 }
 ```
 
-### Admin Verification Endpoints
+### Listener Preferences
 
-#### 1. Get Pending Verifications
-- **Endpoint**: `GET /admin/verification/pending`
-- **Tags**: Admin - Verification
+#### Get Call Preferences
+- **Endpoint**: `GET /listener/preferences`
 - **Headers**: `Authorization: Bearer <access_token>`
-- **Query Parameters**:
-  - `page` (int): Page number (default: 1)
-  - `per_page` (int): Items per page (default: 20, max: 100)
-- **Response**: `200` - Array of pending verification requests
+- **Response**:
+```json
+{
+  "listener_id": 123,
+  "listener_allowed_call_type": ["audio", "video"],
+  "listener_audio_call_enable": true,
+  "listener_video_call_enable": false
+}
+```
 
-#### 2. Review Verification
-- **Endpoint**: `POST /admin/verification/review`
-- **Tags**: Admin - Verification
+#### Update Call Preferences
+- **Endpoint**: `PUT /listener/preferences`
 - **Headers**: `Authorization: Bearer <access_token>`
 - **Body**:
 ```json
 {
-  "sample_id": 1,
-  "status": "approved",
-  "remarks": "Audio quality is good, voice is clear and professional"
+  "listener_audio_call_enable": false,
+  "listener_video_call_enable": true
 }
 ```
-- **Response**: `200` - Review completed
-```json
-{
-  "success": true,
-  "message": "Verification approved successfully with remarks: Audio quality is good, voice is clear and professional",
-  "verification": {
-    "sample_id": 1,
-    "listener_id": 123,
-    "audio_file_url": "https://bucket-name.s3.region.amazonaws.com/verification-audio/123/20240115_103000_abc12345.mp3",
-    "status": "approved",
-    "remarks": "Audio quality is good, voice is clear and professional",
-    "uploaded_at": "2024-01-15T10:30:00Z",
-    "reviewed_at": "2024-01-15T14:45:00Z"
-  }
-}
+
+### Admin Verification (Database Update)
+To verify a listener, admins update the database:
+
+```sql
+UPDATE listener_profile 
+SET verification_status = true, verified_on = now() 
+WHERE listener_id = <listener_id>;
 ```
 
 ### Verification Statuses
-- **pending**: Awaiting admin review
-- **approved**: Verification approved, listener can work
-- **rejected**: Verification rejected, needs new audio sample
+- **`false`**: Not verified (default) - cannot access listener APIs
+- **`true`**: Verified - can access all listener features
 
 ### Security Features
-- ✅ **Role-based access**: Only listeners can upload, only admins can review
-- ✅ **File validation**: Audio files only, 10MB size limit
-- ✅ **Pending prevention**: One pending verification per listener
-- ✅ **S3 integration**: Secure file storage with metadata tracking
+- ✅ **Role-based access**: Only listeners can access verification endpoints
+- ✅ **Verification required**: All listener APIs check verification status
+- ✅ **Feed filtering**: Only verified listeners appear in customer feeds
+- ✅ **Audio validation**: Live audio samples stored for admin review
 
 ## S3 File Upload
 
