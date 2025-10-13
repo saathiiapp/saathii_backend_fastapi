@@ -20,6 +20,10 @@ class ListenerFeedItem(BaseModel):
     is_busy: bool
     wait_time: Optional[int] = None
     is_available: bool
+    # Listener call preferences
+    listener_allowed_call_type: Optional[List[str]] = None
+    listener_audio_call_enable: Optional[bool] = None
+    listener_video_call_enable: Optional[bool] = None
 
 
 class ListenerFeedResponse(BaseModel):

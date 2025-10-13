@@ -127,12 +127,13 @@ CREATE TABLE IF NOT EXISTS listener_payout (
 -- 12) Listener Profile (verification, permissions, and call configuration)
 CREATE TABLE IF NOT EXISTS listener_profile (
   listener_id                INT PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
-  verification_status        VARCHAR(20) CHECK (verification_status IN ('pending', 'verified', 'rejected')) DEFAULT 'pending',
+  verification_status        BOOLEAN DEFAULT FALSE,  -- true = verified, false = not verified
   verified_on                TIMESTAMPTZ,
   verification_message       TEXT,
+  audio_file_url             TEXT,  -- S3 URL for verification audio sample
   listener_allowed_call_type TEXT[] CHECK (
                                 listener_allowed_call_type <@ ARRAY['audio','video','both']
-                              ),
+                              ) DEFAULT ARRAY['audio', 'video'],
   listener_audio_call_enable BOOLEAN DEFAULT TRUE,
   listener_video_call_enable BOOLEAN DEFAULT TRUE,
   updated_at                 TIMESTAMPTZ DEFAULT now(),

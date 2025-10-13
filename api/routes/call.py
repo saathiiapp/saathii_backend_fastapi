@@ -93,6 +93,17 @@ async def start_call(data: StartCallRequest, user=Depends(get_current_user_async
         if not listener:
             raise HTTPException(status_code=404, detail="Listener not found")
         
+        # Check if listener is verified
+        verification_status = await conn.fetchval(
+            "SELECT verification_status FROM listener_profile WHERE listener_id = $1",
+            data.listener_id
+        )
+        if not verification_status:
+            raise HTTPException(
+                status_code=403, 
+                detail="Cannot start call with unverified listener. Please choose a verified listener."
+            )
+        
         # Check if listener is available
         if not await check_user_availability(data.listener_id):
             raise HTTPException(status_code=409, detail="Listener is currently busy")

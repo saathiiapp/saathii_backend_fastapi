@@ -45,3 +45,5 @@ class RegisterRequest(BaseModel):
     profile_image_url: Optional[str] = None
     preferred_language: Optional[str] = None
     role: Optional[RoleEnum] = None
+    # For listener registration
+    live_audio_url: Optional[str] = None  # S3 URL for live audio sample

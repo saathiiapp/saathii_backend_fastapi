@@ -195,6 +195,23 @@ async def register_user(data: RegisterRequest):
             # Assign Basic badge for today if the user is registering as a listener
             if normalized_role == "listener":
                 await assign_basic_badge_for_today(user["user_id"])
+                
+                # Create listener profile with verification status and default values
+                await conn.execute(
+                    """
+                    INSERT INTO listener_profile 
+                    (listener_id, verification_status, audio_file_url, 
+                     listener_allowed_call_type, listener_audio_call_enable, 
+                     listener_video_call_enable, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+                    """,
+                    user["user_id"],
+                    False,  # verification_status - starts as not verified
+                    data.live_audio_url,  # audio_file_url - can be NULL if not provided
+                    ['audio', 'video'],  # listener_allowed_call_type - default to both
+                    True,  # listener_audio_call_enable - default to True
+                    True   # listener_video_call_enable - default to True
+                )
 
         # Create user status record (user starts online after registration)
         await conn.execute(

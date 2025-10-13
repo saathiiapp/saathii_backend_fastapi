@@ -45,7 +45,7 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 async def check_listener_role(user_id: int):
-    """Check if user has listener role"""
+    """Check if user has listener role and is verified"""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         listener_role = await conn.fetchrow(
@@ -59,6 +59,17 @@ async def check_listener_role(user_id: int):
             raise HTTPException(
                 status_code=403, 
                 detail="Only users with listener role can access this endpoint"
+            )
+        
+        # Check verification status
+        verification_status = await conn.fetchval(
+            "SELECT verification_status FROM listener_profile WHERE listener_id = $1",
+            user_id
+        )
+        if not verification_status:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Listener verification is pending. Please wait for admin approval."
             )
 
 # CUSTOMER WALLET APIs

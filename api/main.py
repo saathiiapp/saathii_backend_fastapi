@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from api.routes import auth, user, call, wallet, feed, favorites, block, badge, status
+from api.routes import auth, user, call, wallet, feed, favorites, block, badge, status, verification, listener_preferences
 
 app = FastAPI(
     title="Saathii Backend API",
@@ -58,3 +58,5 @@ app.include_router(favorites.router)
 app.include_router(wallet.router)
 app.include_router(call.router)
 app.include_router(feed.router)
+app.include_router(verification.router)
+app.include_router(listener_preferences.router)

@@ -75,11 +75,15 @@ async def get_listeners_feed(
                 us.last_seen,
                 us.is_busy,
                 us.wait_time,
-                (us.is_online AND NOT us.is_busy) AS is_available
+                (us.is_online AND NOT us.is_busy) AS is_available,
+                lp.listener_allowed_call_type,
+                lp.listener_audio_call_enable,
+                lp.listener_video_call_enable
             FROM users u
             LEFT JOIN user_roles ur ON u.user_id = ur.user_id
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
+            LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
             WHERE u.user_id != $1  -- Exclude current user
             AND ub.blocked_id IS NULL  -- Exclude users current user blocked
         """
@@ -88,8 +92,9 @@ async def get_listeners_feed(
         params = [user["user_id"]]
         param_count = 1
 
-        # Must be listeners
+        # Must be listeners and verified
         conditions.append("EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true)")
+        conditions.append("lp.verification_status = true")
 
         if online_only:
             param_count += 1
@@ -183,6 +188,9 @@ async def get_listeners_feed(
                 is_busy=row["is_busy"],
                 wait_time=row["wait_time"],
                 is_available=row["is_available"],
+                listener_allowed_call_type=row["listener_allowed_call_type"],
+                listener_audio_call_enable=row["listener_audio_call_enable"],
+                listener_video_call_enable=row["listener_video_call_enable"],
             ))
 
         has_next = offset + per_page < total_count
