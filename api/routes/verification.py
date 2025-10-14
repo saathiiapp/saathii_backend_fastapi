@@ -62,13 +62,11 @@ async def get_verification_status(user=Depends(get_current_user_async)):
             return VerificationStatusResponse(
                 verification_status=False,
                 verification_message="Listener profile not found. Please complete registration.",
-                verified_on=None,
-                latest_verification=None
+                verified_on=None
             )
         
         return VerificationStatusResponse(
             verification_status=verification["verification_status"],
             verification_message=verification["verification_message"],
-            verified_on=verification["verified_on"],
-            latest_verification=None  # We don't have separate verification records anymore
+            verified_on=verification["verified_on"]
         )

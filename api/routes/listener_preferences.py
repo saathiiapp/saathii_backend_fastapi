@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from api.clients.jwt_handler import decode_jwt
 from api.clients.redis_client import redis_client
 from api.clients.db import get_db_pool
-from api.utils.user_validation import validate_user_active
+from api.utils.user_validation import validate_user_active, enforce_listener_verified
 from api.schemas.listener_preferences import ListenerPreferencesResponse, UpdateListenerPreferencesRequest
 
 router = APIRouter(tags=["Listener Preferences"])
@@ -48,16 +48,8 @@ async def get_listener_preferences(user=Depends(get_current_user_async)):
                 detail="Only users with listener role can access this endpoint"
             )
         
-        # Check verification status
-        verification_status = await conn.fetchval(
-            "SELECT verification_status FROM listener_profile WHERE listener_id = $1",
-            user_id
-        )
-        if not verification_status:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied. Listener verification is pending. Please wait for admin approval."
-            )
+        # Enforce listener verification
+        await enforce_listener_verified(user_id)
         
         # Get listener preferences
         preferences = await conn.fetchrow(
@@ -91,7 +83,6 @@ async def update_listener_preferences(
     """Update listener call preferences"""
     user_id = user["user_id"]
     
-    # Check if user is a listener
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         listener_role = await conn.fetchrow(
@@ -106,19 +97,9 @@ async def update_listener_preferences(
                 status_code=403, 
                 detail="Only users with listener role can access this endpoint"
             )
+
+        await enforce_listener_verified(user_id)
         
-        # Check verification status
-        verification_status = await conn.fetchval(
-            "SELECT verification_status FROM listener_profile WHERE listener_id = $1",
-            user_id
-        )
-        if not verification_status:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied. Listener verification is pending. Please wait for admin approval."
-            )
-        
-        # Build update query dynamically based on provided fields
         update_fields = []
         update_values = []
         param_count = 0
@@ -132,22 +113,19 @@ async def update_listener_preferences(
             param_count += 1
             update_fields.append(f"listener_video_call_enable = ${param_count}")
             update_values.append(data.listener_video_call_enable)
-        
+
         if not update_fields:
             raise HTTPException(
                 status_code=400,
                 detail="At least one preference field must be provided for update"
             )
-        
-        # Add updated_at and user_id
-        param_count += 1
-        update_fields.append(f"updated_at = ${param_count}")
-        update_values.append("now()")
-        
+
+        update_fields.append("updated_at = now()")
+
+        # WHERE listener_id
         param_count += 1
         update_values.append(user_id)
-        
-        # Execute update
+
         await conn.execute(
             f"""
             UPDATE listener_profile 
@@ -157,7 +135,6 @@ async def update_listener_preferences(
             *update_values
         )
         
-        # Get updated preferences
         preferences = await conn.fetchrow(
             """
             SELECT listener_id, listener_allowed_call_type, listener_audio_call_enable, 

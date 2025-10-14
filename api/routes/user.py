@@ -5,7 +5,7 @@ from datetime import datetime
 from api.clients.redis_client import redis_client
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
-from api.utils.user_validation import validate_user_active
+from api.utils.user_validation import validate_user_active, enforce_listener_verified
 from api.schemas.user import (
     UserResponse, 
     EditUserRequest
@@ -60,6 +60,8 @@ async def get_me(user=Depends(get_current_user_async)):
 
 @router.put("/both/users/me", response_model=UserResponse)
 async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
+    # Enforce: listeners must be verified to update their profile
+    await enforce_listener_verified(user["user_id"])
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         db_user = await conn.fetchrow(
@@ -91,6 +93,9 @@ async def delete_me(authorization: str = Header(...), user=Depends(get_current_u
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
     token = authorization.split(" ")[1]
+
+    # Enforce: listeners must be verified to delete their account
+    await enforce_listener_verified(user["user_id"])
 
     pool = await get_db_pool()
     async with pool.acquire() as conn:

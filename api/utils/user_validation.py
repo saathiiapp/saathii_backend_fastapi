@@ -21,3 +21,28 @@ async def validate_user_active(user_id: int) -> bool:
             raise HTTPException(status_code=403, detail="User account is inactive")
         
         return True
+
+
+async def enforce_listener_verified(user_id: int) -> None:
+    """If the user has an active listener role, require verification to proceed."""
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        has_listener_role = await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM user_roles 
+                WHERE user_id = $1 AND role = 'listener' AND active = true
+            )
+            """,
+            user_id,
+        )
+        if has_listener_role:
+            is_verified = await conn.fetchval(
+                "SELECT verification_status FROM listener_profile WHERE listener_id = $1",
+                user_id,
+            )
+            if not is_verified:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. Listener verification is pending. Please wait for admin approval.",
+                )
