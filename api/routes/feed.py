@@ -7,8 +7,6 @@ from api.utils.user_validation import validate_user_active
 from api.schemas.feed import (
     ListenerFeedResponse,
     ListenerFeedItem,
-    UsersFeedResponse,
-    UserFeedItem,
 )
 
 
@@ -144,6 +142,7 @@ async def get_listeners_feed(
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
+            LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
             WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL
         """
         total_count = await conn.fetchval(count_query, *params)
@@ -153,6 +152,7 @@ async def get_listeners_feed(
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
+            LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
             WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL AND us.is_online = true
         """
         online_count = await conn.fetchval(online_count_query, *params)
@@ -162,6 +162,7 @@ async def get_listeners_feed(
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
+            LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
             WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL AND us.is_online = true AND us.is_busy = false
         """
         available_count = await conn.fetchval(available_count_query, *params)
@@ -205,169 +206,6 @@ async def get_listeners_feed(
             per_page=per_page,
             has_next=has_next,
             has_previous=has_previous
-        )
-
-
-@router.get("/listener/feed/users", response_model=UsersFeedResponse)
-async def get_users_feed(
-    online_only: bool = False,
-    available_only: bool = False,
-    language: Optional[str] = None,
-    interests: Optional[str] = None,
-    min_rating: Optional[int] = None,
-    page: int = 1,
-    per_page: int = 20,
-    user=Depends(get_current_user_async)
-):
-    if page < 1:
-        page = 1
-    if per_page < 1 or per_page > 100:
-        per_page = 20
-
-    offset = (page - 1) * per_page
-
-    interest_list = None
-    if interests:
-        interest_list = [interest.strip() for interest in interests.split(",") if interest.strip()]
-
-    pool = await get_db_pool()
-    async with pool.acquire() as conn:
-        base_query = """
-            SELECT 
-                u.user_id,
-                u.username,
-                u.sex,
-                u.bio,
-                u.interests,
-                u.profile_image_url,
-                u.preferred_language,
-                u.rating,
-                u.country,
-                array_agg(ur.role) FILTER (WHERE ur.active = TRUE) AS roles,
-                us.is_online,
-                us.last_seen,
-                us.is_busy,
-                us.wait_time,
-                (us.is_online AND NOT us.is_busy) AS is_available
-            FROM users u
-            LEFT JOIN user_roles ur ON u.user_id = ur.user_id
-            LEFT JOIN user_status us ON u.user_id = us.user_id
-            LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
-            WHERE u.user_id != $1
-              AND ub.blocked_id IS NULL  -- Exclude users current user blocked
-        """
-
-        conditions = ["u.user_id != $1"]
-        params = [user["user_id"]]
-        param_count = 1
-
-        conditions.append("NOT EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true)")
-        # Also exclude users who have blocked the current user
-        conditions.append("NOT EXISTS (SELECT 1 FROM user_blocks ub2 WHERE ub2.blocker_id = u.user_id AND ub2.blocked_id = $1)")
-
-        if online_only:
-            param_count += 1
-            conditions.append(f"us.is_online = ${param_count}")
-            params.append(True)
-
-        if available_only:
-            param_count += 1
-            conditions.append(f"us.is_online = ${param_count}")
-            params.append(True)
-            param_count += 1
-            conditions.append(f"us.is_busy = ${param_count}")
-            params.append(False)
-
-        if language:
-            param_count += 1
-            conditions.append(f"u.preferred_language = ${param_count}")
-            params.append(language)
-
-        if interest_list:
-            param_count += 1
-            conditions.append(f"u.interests && ${param_count}")
-            params.append(interest_list)
-
-        if min_rating is not None:
-            param_count += 1
-            conditions.append(f"u.rating >= ${param_count}")
-            params.append(min_rating)
-
-        if len(conditions) > 1:
-            base_query += " AND " + " AND ".join(conditions[1:])
-
-        base_query += """
-            GROUP BY u.user_id, us.is_online, us.last_seen, us.is_busy, us.wait_time
-            ORDER BY 
-                us.is_online DESC,
-                us.is_busy ASC,
-                u.rating DESC NULLS LAST,
-                us.last_seen DESC
-        """
-
-        count_query = f"""
-            SELECT COUNT(DISTINCT u.user_id)
-            FROM users u
-            LEFT JOIN user_status us ON u.user_id = us.user_id
-            LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
-            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL
-        """
-        total_count = await conn.fetchval(count_query, *params)
-
-        online_count_query = f"""
-            SELECT COUNT(DISTINCT u.user_id)
-            FROM users u
-            LEFT JOIN user_status us ON u.user_id = us.user_id
-            LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
-            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL AND us.is_online = true
-        """
-        online_count = await conn.fetchval(online_count_query, *params)
-
-        available_count_query = f"""
-            SELECT COUNT(DISTINCT u.user_id)
-            FROM users u
-            LEFT JOIN user_status us ON u.user_id = us.user_id
-            LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
-            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL AND us.is_online = true AND us.is_busy = false
-        """
-        available_count = await conn.fetchval(available_count_query, *params)
-
-        paginated_query = base_query + f" LIMIT ${param_count + 1} OFFSET ${param_count + 2}"
-        params.extend([per_page, offset])
-        users_data = await conn.fetch(paginated_query, *params)
-
-        users = []
-        for row in users_data:
-            users.append(UserFeedItem(
-                user_id=row["user_id"],
-                username=row["username"],
-                sex=row["sex"],
-                bio=row["bio"],
-                interests=row["interests"],
-                profile_image_url=row["profile_image_url"],
-                preferred_language=row["preferred_language"],
-                rating=row["rating"],
-                country=row["country"],
-                roles=row["roles"],
-                is_online=row["is_online"],
-                last_seen=row["last_seen"],
-                is_busy=row["is_busy"],
-                wait_time=row["wait_time"],
-                is_available=row["is_available"],
-            ))
-
-        has_next = offset + per_page < total_count
-        has_previous = page > 1
-
-        return UsersFeedResponse(
-            items=users,
-            total_count=total_count,
-            online_count=online_count,
-            available_count=available_count,
-            page=page,
-            per_page=per_page,
-            has_next=has_next,
-            has_previous=has_previous,
         )
 
 
