@@ -1,8 +1,17 @@
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from api.routes import auth, user, call, wallet, feed, favorites, block, badge, status, verification, listener_preferences
+from api.clients.db import close_db_pool
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: nothing required right now
+    yield
+    # Shutdown: gracefully close the DB pool
+    await close_db_pool()
 
 app = FastAPI(
     title="Saathii Backend API",
@@ -25,7 +34,8 @@ app = FastAPI(
             "name": "Call Management",
             "description": "Call management system with coin-based billing, call lifecycle, transactions, and real-time status updates",
         },
-    ]
+    ],
+    lifespan=lifespan
 )
 
 # Security middleware
