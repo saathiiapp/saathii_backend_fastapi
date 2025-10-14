@@ -3,7 +3,7 @@ from typing import List, Optional
 from api.clients.db import get_db_pool
 from api.clients.redis_client import redis_client
 from api.clients.jwt_handler import decode_jwt
-from api.utils.user_validation import validate_user_active
+from api.utils.user_validation import validate_user_active, validate_customer_role
 from api.schemas.feed import (
     ListenerFeedResponse,
     ListenerFeedItem,
@@ -33,6 +33,17 @@ async def get_current_user_async(authorization: str = Header(...)):
     return payload
 
 
+async def get_current_customer_user(authorization: str = Header(...)):
+    """Get current user and validate they have customer role."""
+    user = await get_current_user_async(authorization)
+    user_id = user.get("user_id")
+    
+    # Validate user has customer role
+    await validate_customer_role(user_id)
+    
+    return user
+
+
 @router.get("/customer/feed/listeners", response_model=ListenerFeedResponse)
 async def get_listeners_feed(
     online_only: bool = False,
@@ -42,7 +53,7 @@ async def get_listeners_feed(
     min_rating: Optional[int] = None,
     page: int = 1,
     per_page: int = 20,
-    user=Depends(get_current_user_async)
+    user=Depends(get_current_customer_user)
 ):
     if page < 1:
         page = 1
@@ -129,7 +140,8 @@ async def get_listeners_feed(
             base_query += " AND " + " AND ".join(conditions[1:])
 
         base_query += """
-            GROUP BY u.user_id, us.is_online, us.last_seen, us.is_busy, us.wait_time
+            GROUP BY u.user_id, us.is_online, us.last_seen, us.is_busy, us.wait_time, 
+                     lp.listener_allowed_call_type, lp.listener_audio_call_enable, lp.listener_video_call_enable
             ORDER BY 
                 us.is_online DESC,
                 us.is_busy ASC,

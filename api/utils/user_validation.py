@@ -46,3 +46,29 @@ async def enforce_listener_verified(user_id: int) -> None:
                     status_code=403,
                     detail="Access denied. Listener verification is pending. Please wait for admin approval.",
                 )
+
+
+async def validate_customer_role(user_id: int) -> bool:
+    """
+    Validate if a user has the customer role. Raises HTTPException if user doesn't have customer role.
+    Returns True if user has customer role.
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        has_customer_role = await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM user_roles 
+                WHERE user_id = $1 AND role = 'customer' AND active = true
+            )
+            """,
+            user_id,
+        )
+        
+        if not has_customer_role:
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Customer role required to access this endpoint."
+            )
+        
+        return True
