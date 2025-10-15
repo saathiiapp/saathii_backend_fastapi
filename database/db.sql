@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS user_roles (
   user_id   INT REFERENCES users(user_id) ON DELETE CASCADE,
   role      VARCHAR(20) CHECK (role IN ('customer','listener')),
-  active    BOOLEAN DEFAULT TRUE,
   assigned_at TIMESTAMPTZ DEFAULT now(),
   PRIMARY KEY (user_id, role)
 );

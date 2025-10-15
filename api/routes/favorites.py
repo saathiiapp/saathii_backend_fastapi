@@ -52,7 +52,7 @@ async def add_favorite(
             SELECT u.user_id, u.username
             FROM users u
             JOIN user_roles ur ON u.user_id = ur.user_id
-            WHERE u.user_id = $1 AND ur.role = 'listener' AND ur.active = true
+            WHERE u.user_id = $1 AND ur.role = 'listener'
             """,
             listener_id
         )

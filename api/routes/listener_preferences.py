@@ -38,7 +38,7 @@ async def get_listener_preferences(user=Depends(get_current_user_async)):
         listener_role = await conn.fetchrow(
             """
             SELECT role FROM user_roles 
-            WHERE user_id = $1 AND role = 'listener' AND active = true
+            WHERE user_id = $1 AND role = 'listener'
             """,
             user_id
         )
@@ -88,7 +88,7 @@ async def update_listener_preferences(
         listener_role = await conn.fetchrow(
             """
             SELECT role FROM user_roles 
-            WHERE user_id = $1 AND role = 'listener' AND active = true
+            WHERE user_id = $1 AND role = 'listener'
             """,
             user_id
         )

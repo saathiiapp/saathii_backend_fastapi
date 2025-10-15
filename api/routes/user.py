@@ -43,7 +43,7 @@ async def get_me(user=Depends(get_current_user_async)):
             """
             SELECT 
                 u.*,
-                array_agg(ur.role) FILTER (WHERE ur.active = TRUE) AS roles,
+                array_agg(ur.role) AS roles,
                 us.is_active
             FROM users u
             LEFT JOIN user_roles ur ON u.user_id = ur.user_id

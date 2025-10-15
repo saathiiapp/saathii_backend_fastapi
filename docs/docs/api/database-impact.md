@@ -75,7 +75,7 @@ This document explains what happens in the database for each API endpoint, which
 **Database Impact:** READ
 - **Tables:** `users`, `user_roles`
 - **Operations:**
-  - `SELECT u.*, array_agg(ur.role) FILTER (WHERE ur.active = TRUE) AS roles FROM users u LEFT JOIN user_roles ur ON u.user_id = ur.user_id WHERE u.user_id = $1 GROUP BY u.user_id`
+  - `SELECT u.*, array_agg(ur.role) AS roles FROM users u LEFT JOIN user_roles ur ON u.user_id = ur.user_id WHERE u.user_id = $1 GROUP BY u.user_id`
 
 ### `PUT /users/me`
 **Database Impact:** UPDATE

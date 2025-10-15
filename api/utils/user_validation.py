@@ -31,7 +31,7 @@ async def enforce_listener_verified(user_id: int) -> None:
             """
             SELECT EXISTS (
                 SELECT 1 FROM user_roles 
-                WHERE user_id = $1 AND role = 'listener' AND active = true
+                WHERE user_id = $1 AND role = 'listener'
             )
             """,
             user_id,
@@ -59,7 +59,7 @@ async def validate_customer_role(user_id: int) -> bool:
             """
             SELECT EXISTS (
                 SELECT 1 FROM user_roles 
-                WHERE user_id = $1 AND role = 'customer' AND active = true
+                WHERE user_id = $1 AND role = 'customer'
             )
             """,
             user_id,

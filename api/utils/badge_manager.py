@@ -139,7 +139,7 @@ async def assign_badges_for_all_listeners(target_date: date) -> Dict[str, int]:
             """
             SELECT ur.user_id 
             FROM user_roles ur 
-            WHERE ur.role = 'listener' AND ur.active = TRUE
+            WHERE ur.role = 'listener'
             """
         )
         

@@ -79,7 +79,7 @@ async def get_listeners_feed(
                 u.preferred_language,
                 u.rating,
                 u.country,
-                array_agg(ur.role) FILTER (WHERE ur.active = TRUE) AS roles,
+                array_agg(ur.role) AS roles,
                 us.is_online,
                 us.last_seen,
                 us.is_busy,
@@ -97,12 +97,13 @@ async def get_listeners_feed(
             AND ub.blocked_id IS NULL  -- Exclude users current user blocked
         """
 
-        conditions = ["u.user_id != $1"]
+        conditions = ["u.user_id != $1", "ub.blocked_id IS NULL"]
         params = [user["user_id"]]
         param_count = 1
 
-        # Must be listeners and verified
-        conditions.append("EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true)")
+        # Must be active users with listener role and verified
+        conditions.append("us.is_active = true")  # User account must be active
+        conditions.append("EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener')")
         conditions.append("lp.verification_status = true")
 
         if online_only:
@@ -155,7 +156,7 @@ async def get_listeners_feed(
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
             LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
-            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL
+            WHERE {' AND '.join(conditions)}
         """
         total_count = await conn.fetchval(count_query, *params)
 
@@ -165,7 +166,7 @@ async def get_listeners_feed(
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
             LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
-            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL AND us.is_online = true
+            WHERE {' AND '.join(conditions)} AND us.is_online = true
         """
         online_count = await conn.fetchval(online_count_query, *params)
 
@@ -175,7 +176,7 @@ async def get_listeners_feed(
             LEFT JOIN user_status us ON u.user_id = us.user_id
             LEFT JOIN user_blocks ub ON u.user_id = ub.blocked_id AND ub.blocker_id = $1
             LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
-            WHERE {' AND '.join(conditions)} AND ub.blocked_id IS NULL AND us.is_online = true AND us.is_busy = false
+            WHERE {' AND '.join(conditions)} AND us.is_online = true AND us.is_busy = false
         """
         available_count = await conn.fetchval(available_count_query, *params)
 
@@ -228,10 +229,14 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
         listeners_total = await conn.fetchval(
             """
             SELECT COUNT(*) FROM users u
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
             WHERE u.user_id != $1
+              AND us.is_active = true
               AND EXISTS (
-                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener'
               )
+              AND lp.verification_status = true
               AND NOT EXISTS (
                 SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
               )
@@ -247,11 +252,14 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
             SELECT COUNT(DISTINCT u.user_id)
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
+            LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
             WHERE u.user_id != $1
+              AND us.is_active = true
               AND us.is_online = true
               AND EXISTS (
-                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener'
               )
+              AND lp.verification_status = true
               AND NOT EXISTS (
                 SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
               )
@@ -267,11 +275,14 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
             SELECT COUNT(DISTINCT u.user_id)
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
+            LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
             WHERE u.user_id != $1
+              AND us.is_active = true
               AND us.is_online = true AND us.is_busy = false
               AND EXISTS (
-                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener'
               )
+              AND lp.verification_status = true
               AND NOT EXISTS (
                 SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
               )
@@ -285,9 +296,11 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
         users_total = await conn.fetchval(
             """
             SELECT COUNT(*) FROM users u
+            LEFT JOIN user_status us ON u.user_id = us.user_id
             WHERE u.user_id != $1
+              AND us.is_active = true
               AND NOT EXISTS (
-                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener'
               )
               AND NOT EXISTS (
                 SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
@@ -305,9 +318,10 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
             WHERE u.user_id != $1
+              AND us.is_active = true
               AND us.is_online = true
               AND NOT EXISTS (
-                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener'
               )
               AND NOT EXISTS (
                 SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id
@@ -325,9 +339,10 @@ async def get_feed_stats(user=Depends(get_current_user_async)):
             FROM users u
             LEFT JOIN user_status us ON u.user_id = us.user_id
             WHERE u.user_id != $1
+              AND us.is_active = true
               AND us.is_online = true AND us.is_busy = false
               AND NOT EXISTS (
-                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener' AND r.active = true
+                SELECT 1 FROM user_roles r WHERE r.user_id = u.user_id AND r.role = 'listener'
               )
               AND NOT EXISTS (
                 SELECT 1 FROM user_blocks ub1 WHERE ub1.blocker_id = $1 AND ub1.blocked_id = u.user_id

@@ -51,7 +51,7 @@ async def check_listener_role(user_id: int):
         listener_role = await conn.fetchrow(
             """
             SELECT role FROM user_roles 
-            WHERE user_id = $1 AND role = 'listener' AND active = true
+            WHERE user_id = $1 AND role = 'listener'
             """,
             user_id
         )
@@ -126,7 +126,7 @@ async def add_coin_to_wallet(
             """
             SELECT EXISTS (
                 SELECT 1 FROM user_roles 
-                WHERE user_id = $1 AND role = 'customer' AND active = true
+                WHERE user_id = $1 AND role = 'customer'
             )
             """,
             user_id,
@@ -200,7 +200,7 @@ async def get_recharge_history(
             """
             SELECT EXISTS (
                 SELECT 1 FROM user_roles 
-                WHERE user_id = $1 AND role = 'customer' AND active = true
+                WHERE user_id = $1 AND role = 'customer'
             )
             """,
             user_id,
