@@ -52,7 +52,7 @@ async def get_current_badge(user=Depends(get_current_user_async)):
         "current_badge": badge_info['badge'],
         "audio_rate_per_minute": badge_info['audio_rate_per_minute'],
         "video_rate_per_minute": badge_info['video_rate_per_minute'],
-        "assigned_date": badge_info['assigned_date'],
+        "date": badge_info['date'],
         "assigned_at": badge_info['assigned_at']
     }
 
