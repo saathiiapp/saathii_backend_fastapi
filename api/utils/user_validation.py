@@ -24,7 +24,7 @@ async def validate_user_active(user_id: int) -> bool:
 
 
 async def enforce_listener_verified(user_id: int) -> None:
-    """If the user has an active listener role, require verification to proceed."""
+    """Require user to have listener role AND be verified to proceed."""
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         has_listener_role = await conn.fetchval(
@@ -36,16 +36,22 @@ async def enforce_listener_verified(user_id: int) -> None:
             """,
             user_id,
         )
-        if has_listener_role:
-            is_verified = await conn.fetchval(
-                "SELECT verification_status FROM listener_profile WHERE listener_id = $1",
-                user_id,
+        
+        if not has_listener_role:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Listener role required to access this endpoint."
             )
-            if not is_verified:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Access denied. Listener verification is pending. Please wait for admin approval.",
-                )
+        
+        is_verified = await conn.fetchval(
+            "SELECT verification_status FROM listener_profile WHERE listener_id = $1",
+            user_id,
+        )
+        if not is_verified:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Listener verification is pending. Please wait for admin approval.",
+            )
 
 
 async def validate_customer_role(user_id: int) -> bool:
