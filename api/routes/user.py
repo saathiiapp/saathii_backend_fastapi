@@ -92,7 +92,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
 
 @router.delete("/both/users/me", response_model=DeleteUserResponse)
 async def delete_me(
-    data: DeleteUserRequest = Body(default=DeleteUserRequest()), 
+    data: Optional[DeleteUserRequest] = Body(default=None), 
     authorization: str = Header(...), 
     user=Depends(get_current_user_async)
 ):
@@ -115,6 +115,8 @@ async def delete_me(
             raise HTTPException(status_code=404, detail="User not found")
         
         # Store delete request with reason and user details before deleting user
+        reason = data.reason if data else None
+        print(f"DEBUG: user_id={user['user_id']}, username={user_details['username']}, phone={user_details['phone']}, reason={reason}, user_role={user_role}")
         request_id = await conn.fetchval(
             """
             INSERT INTO user_delete_requests (user_id, username, phone, reason, user_role, deleted_at, created_at)
@@ -124,9 +126,10 @@ async def delete_me(
             user["user_id"],
             user_details["username"],
             user_details["phone"],
-            data.reason,
+            reason,
             user_role
         )
+        print(f"DEBUG: Inserted into user_delete_requests with request_id={request_id}")
 
         # Remove dependent rows first to satisfy FK constraints
         # Remove wallet transactions and wallet explicitly (defensive even if CASCADE exists)
@@ -141,6 +144,7 @@ async def delete_me(
         # This applies to both customers and listeners.
         
         await conn.execute("DELETE FROM users WHERE user_id=$1", user["user_id"])
+        print(f"DEBUG: User {user['user_id']} deleted successfully, request_id={request_id}")
 
     # Revoke all refresh tokens for the user
     pattern = f"refresh:{user['user_id']}:*"
