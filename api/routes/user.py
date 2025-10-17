@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Body
 from typing import List, Optional
 import time
 from datetime import datetime
@@ -92,7 +92,7 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
 
 @router.delete("/both/users/me", response_model=DeleteUserResponse)
 async def delete_me(
-    data: DeleteUserRequest, 
+    data: DeleteUserRequest = Body(default=DeleteUserRequest()), 
     authorization: str = Header(...), 
     user=Depends(get_current_user_async)
 ):
