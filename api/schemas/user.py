@@ -35,7 +35,7 @@ class EditUserRequest(BaseModel):
 
 
 class DeleteUserRequest(BaseModel):
-    reason: Optional[str] = Field(None, description="Optional reason for account deletion")
+    reason: Optional[str] = None
 
 
 class DeleteUserResponse(BaseModel):

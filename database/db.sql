@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS user_rewards (
 -- 14) User Delete Requests (track account deletion reasons)
 CREATE TABLE IF NOT EXISTS user_delete_requests (
   request_id     SERIAL PRIMARY KEY,
-  user_id        INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_id        INT NOT NULL,            -- store user_id for reference (no CASCADE)
   username       VARCHAR(10),             -- store username for identification
   phone          VARCHAR(20),             -- store phone for identification
   reason         TEXT,                    -- optional reason provided by user
