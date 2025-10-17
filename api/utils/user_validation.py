@@ -78,3 +78,55 @@ async def validate_customer_role(user_id: int) -> bool:
             )
         
         return True
+
+
+async def validate_customer_or_verified_listener(user_id: int) -> str:
+    """
+    Validate user for /both/ endpoints:
+    - Customers: must be active
+    - Listeners: must be active AND verified
+    
+    Returns the user's role ('customer' or 'listener')
+    Raises HTTPException if validation fails
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get user roles
+        user_roles = await conn.fetchval(
+            "SELECT array_agg(role) FROM user_roles WHERE user_id = $1", 
+            user_id
+        )
+        
+        if not user_roles:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if user is active
+        user_status = await conn.fetchrow(
+            "SELECT is_active FROM user_status WHERE user_id = $1",
+            user_id
+        )
+        
+        if not user_status or not user_status["is_active"]:
+            raise HTTPException(status_code=403, detail="User account is inactive")
+        
+        # Determine primary role and validate accordingly
+        if "listener" in user_roles:
+            # For listeners, check verification status
+            is_verified = await conn.fetchval(
+                "SELECT verification_status FROM listener_profile WHERE listener_id = $1",
+                user_id,
+            )
+            if not is_verified:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. Listener verification is pending. Please wait for admin approval.",
+                )
+            return "listener"
+        elif "customer" in user_roles:
+            # For customers, just need to be active (already checked above)
+            return "customer"
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. User must have either customer or listener role."
+            )

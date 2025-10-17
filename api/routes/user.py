@@ -5,10 +5,12 @@ from datetime import datetime
 from api.clients.redis_client import redis_client
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
-from api.utils.user_validation import validate_user_active, enforce_listener_verified
+from api.utils.user_validation import validate_user_active, enforce_listener_verified, validate_customer_or_verified_listener
 from api.schemas.user import (
     UserResponse, 
-    EditUserRequest
+    EditUserRequest,
+    DeleteUserRequest,
+    DeleteUserResponse
 )
 
 router = APIRouter(tags=["User Management"])
@@ -60,8 +62,8 @@ async def get_me(user=Depends(get_current_user_async)):
 
 @router.put("/both/users/me", response_model=UserResponse)
 async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
-    # Enforce: listeners must be verified to update their profile
-    await enforce_listener_verified(user["user_id"])
+    # Validate user role: customers (active), listeners (active + verified)
+    user_role = await validate_customer_or_verified_listener(user["user_id"])
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         db_user = await conn.fetchrow(
@@ -88,25 +90,56 @@ async def edit_me(data: EditUserRequest, user=Depends(get_current_user_async)):
         return dict(db_user)
 
 
-@router.delete("/both/users/me")
-async def delete_me(authorization: str = Header(...), user=Depends(get_current_user_async)):
+@router.delete("/both/users/me", response_model=DeleteUserResponse)
+async def delete_me(
+    data: DeleteUserRequest, 
+    authorization: str = Header(...), 
+    user=Depends(get_current_user_async)
+):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
     token = authorization.split(" ")[1]
 
-    # Enforce: listeners must be verified to delete their account
-    await enforce_listener_verified(user["user_id"])
+    # Validate user role: customers (active), listeners (active + verified)
+    user_role = await validate_customer_or_verified_listener(user["user_id"])
 
     pool = await get_db_pool()
     async with pool.acquire() as conn:
+        # Get user details before deletion
+        user_details = await conn.fetchrow(
+            "SELECT username, phone FROM users WHERE user_id = $1",
+            user["user_id"]
+        )
+        
+        if not user_details:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Store delete request with reason and user details before deleting user
+        request_id = await conn.fetchval(
+            """
+            INSERT INTO user_delete_requests (user_id, username, phone, reason, user_role, deleted_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, now(), now())
+            RETURNING request_id
+            """,
+            user["user_id"],
+            user_details["username"],
+            user_details["phone"],
+            data.reason,
+            user_role
+        )
+
         # Remove dependent rows first to satisfy FK constraints
         # Remove wallet transactions and wallet explicitly (defensive even if CASCADE exists)
         wallet_id = await conn.fetchval("SELECT wallet_id FROM user_wallets WHERE user_id=$1", user["user_id"])
         if wallet_id:
             await conn.execute("DELETE FROM user_transactions WHERE wallet_id=$1", wallet_id)
         await conn.execute("DELETE FROM user_wallets WHERE user_id=$1", user["user_id"])
-        await conn.execute("DELETE FROM user_roles WHERE user_id=$1", user["user_id"])
-        await conn.execute("DELETE FROM user_status WHERE user_id=$1", user["user_id"])
+        
+        # Note: All dependent data (user_roles, user_status, listener_profile, 
+        # listener_payout, listener_badges, user_calls, etc.) will be automatically 
+        # deleted due to CASCADE DELETE constraints when the user is deleted.
+        # This applies to both customers and listeners.
+        
         await conn.execute("DELETE FROM users WHERE user_id=$1", user["user_id"])
 
     # Revoke all refresh tokens for the user
@@ -122,5 +155,8 @@ async def delete_me(authorization: str = Header(...), user=Depends(get_current_u
         if ttl_seconds > 0:
             await redis_client.setex(f"access:{user['user_id']}:{jti}", ttl_seconds, "1")
 
-    return {"message": "User deleted"}
+    return DeleteUserResponse(
+        message="User deleted successfully",
+        request_id=request_id
+    )
     

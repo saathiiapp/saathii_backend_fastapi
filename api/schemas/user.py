@@ -32,3 +32,23 @@ class EditUserRequest(BaseModel):
     interests: Optional[List[str]] = None
     profile_image_url: Optional[str] = None
     preferred_language: Optional[str] = None
+
+
+class DeleteUserRequest(BaseModel):
+    reason: Optional[str] = Field(None, description="Optional reason for account deletion")
+
+
+class DeleteUserResponse(BaseModel):
+    message: str
+    request_id: Optional[int] = None
+
+
+class DeleteRequestRecord(BaseModel):
+    request_id: int
+    user_id: int
+    username: Optional[str] = None
+    phone: Optional[str] = None
+    reason: Optional[str] = None
+    user_role: str
+    deleted_at: datetime
+    created_at: datetime

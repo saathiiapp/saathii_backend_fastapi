@@ -156,11 +156,20 @@ CREATE TABLE IF NOT EXISTS user_rewards (
     DEFERRABLE INITIALLY IMMEDIATE
 );
 
+-- 14) User Delete Requests (track account deletion reasons)
+CREATE TABLE IF NOT EXISTS user_delete_requests (
+  request_id     SERIAL PRIMARY KEY,
+  user_id        INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  username       VARCHAR(10),             -- store username for identification
+  phone          VARCHAR(20),             -- store phone for identification
+  reason         TEXT,                    -- optional reason provided by user
+  user_role      VARCHAR(20) NOT NULL CHECK (user_role IN ('customer','listener')),
+  deleted_at     TIMESTAMPTZ DEFAULT now(),
+  created_at     TIMESTAMPTZ DEFAULT now()
+);
+
 -- Indexes for common filters/queries
 CREATE INDEX idx_calls_user ON user_calls(user_id);
 CREATE INDEX idx_calls_listener ON user_calls(listener_id);
-
-
-
 -- DROP SCHEMA public CASCADE;
 -- CREATE SCHEMA public;
