@@ -3,7 +3,7 @@ from typing import Optional
 
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
-from api.utils.user_validation import validate_user_active
+from api.utils.user_validation import validate_customer_or_verified_listener
 from api.schemas.block import (
     BlockUserRequest,
     UnblockUserRequest,
@@ -28,7 +28,9 @@ async def get_current_user_async(authorization: str = Header(...)):
     
     # Validate user is active
     user_id = payload.get("user_id")
-    await validate_user_active(user_id)
+    
+    # Validate user is active customer or verified listener
+    await validate_customer_or_verified_listener(user_id)
     
     return payload
 
@@ -41,7 +43,6 @@ async def block_user(
     """Block a user (customer or listener)."""
     user_id = user["user_id"]
     blocked_id = data.blocked_id
-    action_type = data.action_type
     reason = data.reason
 
     if user_id == blocked_id:
@@ -60,7 +61,7 @@ async def block_user(
 
         # Check if already blocked
         existing = await conn.fetchrow(
-            "SELECT blocker_id FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2",
+            "SELECT blocker_id FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2 AND action_type = 'block'",
             user_id, blocked_id
         )
 
@@ -69,7 +70,6 @@ async def block_user(
                 success=True,
                 message=f"Already blocked {blocked_user['username'] or 'this user'}",
                 blocked_id=blocked_id,
-                action_type=action_type,
                 is_blocked=True
             )
 
@@ -79,14 +79,13 @@ async def block_user(
             INSERT INTO user_blocks (blocker_id, blocked_id, action_type, reason, created_at)
             VALUES ($1, $2, $3, $4, now())
             """,
-            user_id, blocked_id, action_type, reason
+            user_id, blocked_id, "block", reason
         )
 
         return BlockActionResponse(
             success=True,
             message=f"Successfully blocked {blocked_user['username'] or 'user'}",
             blocked_id=blocked_id,
-            action_type=action_type,
             is_blocked=True
         )
 
@@ -113,7 +112,7 @@ async def unblock_user(
 
         # Check if blocked
         existing = await conn.fetchrow(
-            "SELECT action_type FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2",
+            "SELECT action_type FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2 AND action_type = 'block'",
             user_id, blocked_id
         )
 
@@ -122,13 +121,12 @@ async def unblock_user(
                 success=True,
                 message=f"{blocked_user['username'] or 'User'} was not blocked",
                 blocked_id=blocked_id,
-                action_type="unblock",
                 is_blocked=False
             )
 
         # Unblock the user
         await conn.execute(
-            "DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2",
+            "DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2 AND action_type = 'block'",
             user_id, blocked_id
         )
 
@@ -136,7 +134,6 @@ async def unblock_user(
             success=True,
             message=f"Successfully unblocked {blocked_user['username'] or 'user'}",
             blocked_id=blocked_id,
-            action_type="unblock",
             is_blocked=False
         )
 
@@ -145,7 +142,6 @@ async def unblock_user(
 async def get_blocked_users(
     page: int = 1,
     per_page: int = 20,
-    action_type: Optional[str] = None,
     user=Depends(get_current_user_async)
 ):
     """Get list of users blocked by current user (customer or listener)."""
@@ -163,15 +159,9 @@ async def get_blocked_users(
         base_query = """
             FROM user_blocks ub
             JOIN users u ON ub.blocked_id = u.user_id
-            WHERE ub.blocker_id = $1
+            WHERE ub.blocker_id = $1 AND ub.action_type = 'block'
         """
         params = [user_id]
-        param_count = 1
-
-        if action_type:
-            param_count += 1
-            base_query += f" AND ub.action_type = ${param_count}"
-            params.append(action_type)
 
         count_query = f"SELECT COUNT(*) {base_query}"
         total_count = await conn.fetchval(count_query, *params)
@@ -183,12 +173,11 @@ async def get_blocked_users(
                 u.sex,
                 u.bio,
                 u.profile_image_url,
-                ub.action_type,
                 ub.reason,
                 ub.created_at as blocked_at
             {base_query}
             ORDER BY ub.created_at DESC
-            LIMIT ${param_count + 1} OFFSET ${param_count + 2}
+            LIMIT $2 OFFSET $3
         """
         params.extend([per_page, offset])
 
@@ -202,7 +191,6 @@ async def get_blocked_users(
                 sex=blocked['sex'],
                 bio=blocked['bio'],
                 profile_image_url=blocked['profile_image_url'],
-                action_type=blocked['action_type'],
                 reason=blocked['reason'],
                 blocked_at=blocked['blocked_at']
             ))

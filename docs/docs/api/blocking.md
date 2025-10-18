@@ -1,21 +1,19 @@
 ---
 sidebar_position: 7
 title: Blocking API
-description: User blocking and reporting functionality
+description: User blocking functionality for managing blocked users
 ---
 
 # Blocking API
 
-The Blocking API provides comprehensive user blocking and reporting functionality, allowing users to block other users and manage their blocked list.
+The Blocking API provides user blocking functionality, allowing users to block other users and manage their blocked list.
 
 ## Overview
 
 - **Block Users**: Block users with optional reasons
 - **Unblock Users**: Remove users from blocked list
 - **Blocked List**: View paginated list of blocked users
-- **Status Checking**: Check if a user is blocked
-- **Reporting**: Report users with different action types
-- **Filtering**: Filter blocked users by action type
+- **Simple Interface**: Clean API without complex enums
 
 ## Endpoints
 
@@ -35,14 +33,12 @@ Content-Type: application/json
 ```json
 {
   "blocked_id": 123,
-  "action_type": "block",
   "reason": "Inappropriate behavior"
 }
 ```
 
 **Fields:**
-- `blocked_id`: ID of the user to block
-- `action_type`: Type of action ("block" or "report")
+- `blocked_id`: ID of the user to block (required)
 - `reason`: Optional reason for blocking
 
 **Response:**
@@ -51,7 +47,6 @@ Content-Type: application/json
   "success": true,
   "message": "Successfully blocked jane_smith",
   "blocked_id": 123,
-  "action_type": "block",
   "is_blocked": true
 }
 ```
@@ -81,7 +76,7 @@ Content-Type: application/json
 ```
 
 **Fields:**
-- `blocked_id`: ID of the user to unblock
+- `blocked_id`: ID of the user to unblock (required)
 
 **Response:**
 ```json
@@ -89,7 +84,6 @@ Content-Type: application/json
   "success": true,
   "message": "Successfully unblocked jane_smith",
   "blocked_id": 123,
-  "action_type": "unblock",
   "is_blocked": false
 }
 ```
@@ -115,11 +109,10 @@ Authorization: Bearer <access_token>
 |-----------|------|-------------|---------|
 | `page` | integer | Page number (1-based) | 1 |
 | `per_page` | integer | Items per page (max 100) | 20 |
-| `action_type` | string | Filter by action type ("block", "report") | null |
 
 **Example Request:**
 ```
-GET /blocked?page=1&per_page=10&action_type=block
+GET /both/blocked?page=1&per_page=10
 ```
 
 **Response:**
@@ -132,7 +125,6 @@ GET /blocked?page=1&per_page=10&action_type=block
       "sex": "female",
       "bio": "Professional listener...",
       "profile_image_url": "https://example.com/profile.jpg",
-      "action_type": "block",
       "reason": "Inappropriate behavior",
       "blocked_at": "2024-01-15T10:30:00Z"
     }
@@ -151,13 +143,8 @@ GET /blocked?page=1&per_page=10&action_type=block
 - `sex`: Gender ("male", "female")
 - `bio`: User biography/description
 - `profile_image_url`: Profile image URL
-- `action_type`: Type of action taken ("block", "report")
 - `reason`: Reason for blocking (if provided)
 - `blocked_at`: When the user was blocked
-
-### Check Block Status
-
-Note: There is no explicit "check" endpoint; clients should use `GET /both/blocked` and filter locally if needed.
 
 ## Best Practices
 
@@ -180,3 +167,10 @@ Note: There is no explicit "check" endpoint; clients should use `GET /both/block
 1. **Pagination**: Use pagination for blocked users list
 2. **Caching**: Cache block status for better performance
 3. **Efficient Queries**: Optimize database queries for block checks
+
+## Implementation Notes
+
+- All blocking operations use `action_type = 'block'` in the database
+- Block and report functionality are completely separate
+- No enum validation - simple string-based operations
+- Automatic filtering by action type ensures data integrity

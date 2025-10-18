@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from api.routes import auth, user, call, wallet, feed, favorites, block, badge, status, verification, listener_preferences, help_support
+from api.routes import auth, user, call, wallet, feed, favorites, block, report, badge, status, verification, listener_preferences, help_support
 from api.clients.db import close_db_pool
 
 @asynccontextmanager
@@ -66,6 +66,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(block.router)
+app.include_router(report.router)
 app.include_router(badge.router)
 app.include_router(status.router)
 app.include_router(favorites.router)

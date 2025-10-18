@@ -74,12 +74,6 @@ const config: Config = {
           label: 'API Documentation',
         },
         {
-          type: 'docSidebar',
-          sidebarId: 'guidesSidebar',
-          position: 'left',
-          label: 'Guides',
-        },
-        {
           href: 'https://saathiiapp.com/docs',
           label: 'Swagger UI',
           position: 'right',
@@ -130,14 +124,6 @@ const config: Config = {
             {
               label: 'ReDoc',
               href: 'https://saathiiapp.com/redoc',
-            },
-            {
-              label: 'API Examples',
-              to: '/docs/guides/api-examples',
-            },
-            {
-              label: 'React Native Integration',
-              to: '/docs/guides/react-native-integration',
             },
           ],
         },

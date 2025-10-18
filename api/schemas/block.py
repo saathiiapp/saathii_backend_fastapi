@@ -5,7 +5,6 @@ from datetime import datetime
 
 class BlockUserRequest(BaseModel):
     blocked_id: int = Field(..., description="ID of the user to block")
-    action_type: str = Field("block", description="Type of action (block or report)")
     reason: Optional[str] = Field(None, description="Optional reason for blocking")
 
 
@@ -17,7 +16,6 @@ class BlockActionResponse(BaseModel):
     success: bool
     message: str
     blocked_id: int
-    action_type: str
     is_blocked: bool
 
 
@@ -27,7 +25,6 @@ class BlockedUser(BaseModel):
     sex: Optional[str] = None
     bio: Optional[str] = None
     profile_image_url: Optional[str] = None
-    action_type: str
     reason: Optional[str] = None
     blocked_at: datetime
 

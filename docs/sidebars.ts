@@ -28,6 +28,7 @@ const sidebars: SidebarsConfig = {
         'api/call-management',
         'api/favorites',
         'api/blocking',
+        'api/reporting',
         'api/verification',
         'api/listener-verification',
         'api/help-support',
@@ -39,33 +40,6 @@ const sidebars: SidebarsConfig = {
     // Background tasks removed - functionality integrated into main API
   ],
 
-  // Guides Sidebar
-  guidesSidebar: [
-    {
-      type: 'category',
-      label: 'Getting Started',
-      items: [
-        'guides/installation',
-        'guides/s3-setup',
-        // Background tasks setup guide removed
-      ],
-    },
-    {
-      type: 'category',
-      label: 'React Native Integration',
-      items: [
-        'guides/react-native-authentication',
-        'guides/react-native-user-management',
-        'guides/react-native-wallets',
-        'guides/react-native-calls',
-        'guides/react-native-feeds',
-        'guides/react-native-favorites',
-        'guides/react-native-blocking',
-        'guides/react-native-help-support',
-        'guides/react-native-websocket',
-      ],
-    },
-  ],
 };
 
 export default sidebars;
