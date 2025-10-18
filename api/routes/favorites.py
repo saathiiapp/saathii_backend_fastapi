@@ -6,6 +6,7 @@ from api.clients.jwt_handler import decode_jwt
 from api.utils.user_validation import validate_user_active, validate_customer_role, validate_listener_active_and_verified
 from api.schemas.favorites import (
     AddFavoriteRequest,
+    RemoveFavoriteRequest,
     FavoriteUser,
     FavoritesResponse,
     FavoriteActionResponse,
@@ -188,6 +189,56 @@ async def get_favorites(
             per_page=per_page,
             has_next=has_next,
             has_previous=has_previous
+        )
+
+
+@router.delete("/customer/favorites", response_model=FavoriteActionResponse)
+async def remove_favorite(
+    data: RemoveFavoriteRequest,
+    user=Depends(get_current_user_async)
+):
+    """Remove a listener from favorites (customer only)."""
+    user_id = user["user_id"]
+    listener_id = data.listener_id
+
+    if user_id == listener_id:
+        raise HTTPException(status_code=400, detail="Cannot unfavorite yourself")
+
+    # Validate listener is active and verified
+    listener = await validate_listener_active_and_verified(listener_id)
+
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Check if the favorite exists
+        existing = await conn.fetchrow(
+            """
+            SELECT uf.favoriter_id, u.username
+            FROM user_favorites uf
+            JOIN users u ON uf.favoritee_id = u.user_id
+            WHERE uf.favoriter_id = $1 AND uf.favoritee_id = $2
+            """,
+            user_id, listener_id
+        )
+
+        if not existing:
+            return FavoriteActionResponse(
+                success=True,
+                message="Listener was not in favorites",
+                listener_id=listener_id,
+                is_favorited=False
+            )
+
+        # Remove from favorites
+        await conn.execute(
+            "DELETE FROM user_favorites WHERE favoriter_id = $1 AND favoritee_id = $2",
+            user_id, listener_id
+        )
+
+        return FavoriteActionResponse(
+            success=True,
+            message=f"Successfully removed {existing['username'] or 'listener'} from favorites",
+            listener_id=listener_id,
+            is_favorited=False
         )
 
 

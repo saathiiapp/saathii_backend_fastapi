@@ -10,6 +10,10 @@ class AddFavoriteRequest(BaseModel):
     listener_id: int = Field(..., description="ID of the listener to add to favorites")
 
 
+class RemoveFavoriteRequest(BaseModel):
+    listener_id: int = Field(..., description="ID of the listener to remove from favorites")
+
+
 class FavoriteUser(BaseModel):
     user_id: int
     username: Optional[str] = None

@@ -10,7 +10,8 @@ The Favorites API allows users to manage their favorite listeners, providing qui
 
 ## Overview
 
-- **Add/Remove Favorites**: Add or remove listeners from favorites
+- **Add Favorites**: Add listeners to favorites list
+- **Remove Favorites**: Remove listeners from favorites list
 - **Favorites List**: Get paginated list of favorite listeners
 - **Status Checking**: Check if a listener is favorited
 - **Filtering**: Filter favorites by availability and status
@@ -50,13 +51,50 @@ Content-Type: application/json
 ```
 
 **Error Responses:**
-- `400 Bad Request` - Cannot favorite yourself
+- `400 Bad Request` - Cannot favorite yourself, Listener account is inactive, Listener account is not verified
+- `401 Unauthorized` - Invalid or expired token, Access token required
+- `403 Forbidden` - Access denied. Customer role required, User account is inactive
 - `404 Not Found` - Listener not found
-- `409 Conflict` - Already favorited (returns success with message)
 
 ### Remove from Favorites
 
-Note: There is no delete endpoint; removing favorites is not implemented in current routes.
+Remove a listener from your favorites list.
+
+**Endpoint:** `DELETE /customer/favorites`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "listener_id": 123
+}
+```
+
+**Fields:**
+- `listener_id`: ID of the listener to remove from favorites
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Successfully removed jane_smith from favorites",
+  "listener_id": 123,
+  "is_favorited": false
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Cannot unfavorite yourself, Listener account is inactive, Listener account is not verified
+- `401 Unauthorized` - Invalid or expired token, Access token required
+- `403 Forbidden` - Access denied. Customer role required, User account is inactive
+- `404 Not Found` - Listener not found
+
+**Note:** The endpoint is idempotent - calling it multiple times with the same listener_id will return success even if the listener was not in favorites.
 
 ### Get Favorites
 
@@ -75,13 +113,13 @@ Authorization: Bearer <access_token>
 |-----------|------|-------------|---------|
 | `page` | integer | Page number (1-based) | 1 |
 | `per_page` | integer | Items per page (max 100) | 20 |
-| `online_only` | boolean | Show only online favorites | false |
-| `available_only` | boolean | Show only available favorites (online and not busy) | false |
 
 **Example Request:**
 ```
-GET /favorites?page=1&per_page=10&online_only=true
+GET /customer/favorites?page=1&per_page=10
 ```
+
+**Note:** The API automatically filters to show only active and verified listeners. Inactive or unverified listeners are excluded from the results.
 
 **Response:**
 ```json
@@ -134,16 +172,38 @@ GET /favorites?page=1&per_page=10&online_only=true
 
 ### Check Favorite Status
 
-Note: There is no explicit "check" endpoint; clients should use `GET /customer/favorites` and infer.
+Note: There is no explicit "check" endpoint; clients should use `GET /customer/favorites` and infer the status from the returned list.
+
+## Authentication & Authorization
+
+All favorites endpoints require:
+
+1. **Valid JWT Token**: Must be a valid access token in the Authorization header
+2. **Customer Role**: Only users with the "customer" role can access favorites
+3. **Active Status**: The customer account must be active
+4. **Listener Validation**: When adding/removing favorites, the target listener must be:
+   - Active (not deactivated)
+   - Verified (approved by admin)
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+
+- **200 OK**: Successful operation
+- **400 Bad Request**: Invalid request data or business logic violations
+- **401 Unauthorized**: Invalid or missing authentication
+- **403 Forbidden**: Insufficient permissions or inactive account
+- **404 Not Found**: Resource not found
 
 ## Best Practices
 
 ### User Experience
 
-1. **Immediate Feedback**: Show immediate UI feedback when adding favorites
-2. **Error Handling**: Handle all error cases gracefully
+1. **Immediate Feedback**: Show immediate UI feedback when adding/removing favorites
+2. **Error Handling**: Handle all error cases gracefully with user-friendly messages
 3. **Loading States**: Show loading indicators during operations
-4. **Confirmation**: Consider confirmation for removing favorites
+4. **Confirmation**: Consider confirmation dialogs for removing favorites
+5. **Optimistic Updates**: Update UI immediately, then sync with server
 
 ### Performance
 
@@ -157,3 +217,26 @@ Note: There is no explicit "check" endpoint; clients should use `GET /customer/f
 2. **Conflict Resolution**: Handle conflicts when favorites change
 3. **Offline Support**: Consider offline functionality
 4. **Data Validation**: Validate data before sending to API
+5. **Idempotent Operations**: Both add and remove operations are safe to retry
+
+## API Examples
+
+### Complete Workflow
+
+```bash
+# 1. Add a listener to favorites
+curl -X POST "https://api.example.com/customer/favorites" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"listener_id": 123}'
+
+# 2. Get favorites list
+curl -X GET "https://api.example.com/customer/favorites?page=1&per_page=20" \
+  -H "Authorization: Bearer <token>"
+
+# 3. Remove a listener from favorites
+curl -X DELETE "https://api.example.com/customer/favorites" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"listener_id": 123}'
+```
