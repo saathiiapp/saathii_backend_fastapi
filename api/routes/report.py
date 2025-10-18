@@ -206,7 +206,7 @@ async def get_all_reports_admin(
         # Get reports with pagination
         reports_query = f"""
             SELECT 
-                ub.id as report_id,
+                CONCAT(ub.blocker_id, '-', ub.blocked_id, '-', EXTRACT(EPOCH FROM ub.created_at)::BIGINT) as report_id,
                 ub.blocker_id as reporter_id,
                 reporter.username as reporter_username,
                 ub.blocked_id as reported_id,
