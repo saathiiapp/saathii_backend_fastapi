@@ -80,6 +80,38 @@ async def validate_customer_role(user_id: int) -> bool:
         return True
 
 
+async def validate_listener_active_and_verified(listener_id: int) -> dict:
+    """
+    Validate that a listener exists, is active, and is verified.
+    Returns listener data if valid.
+    Raises HTTPException if validation fails.
+    """
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        listener = await conn.fetchrow(
+            """
+            SELECT u.user_id, u.username, us.is_active, lp.verification_status
+            FROM users u
+            JOIN user_roles ur ON u.user_id = ur.user_id
+            LEFT JOIN user_status us ON u.user_id = us.user_id
+            LEFT JOIN listener_profile lp ON u.user_id = lp.listener_id
+            WHERE u.user_id = $1 AND ur.role = 'listener'
+            """,
+            listener_id
+        )
+
+        if not listener:
+            raise HTTPException(status_code=404, detail="Listener not found")
+        
+        if not listener['is_active']:
+            raise HTTPException(status_code=400, detail="Listener account is inactive")
+        
+        if not listener['verification_status']:
+            raise HTTPException(status_code=400, detail="Listener account is not verified")
+        
+        return dict(listener)
+
+
 async def validate_customer_or_verified_listener(user_id: int) -> str:
     """
     Validate user for /both/ endpoints:

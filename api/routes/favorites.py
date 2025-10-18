@@ -3,7 +3,7 @@ from datetime import datetime
 
 from api.clients.db import get_db_pool
 from api.clients.jwt_handler import decode_jwt
-from api.utils.user_validation import validate_user_active
+from api.utils.user_validation import validate_user_active, validate_customer_role, validate_listener_active_and_verified
 from api.schemas.favorites import (
     AddFavoriteRequest,
     FavoriteUser,
@@ -25,9 +25,10 @@ async def get_current_user_async(authorization: str = Header(...)):
     if payload.get("type") != "access":
         raise HTTPException(status_code=401, detail="Access token required")
     
-    # Validate user is active
+    # Validate user is active and has customer role
     user_id = payload.get("user_id")
     await validate_user_active(user_id)
+    await validate_customer_role(user_id)
     
     return payload
 
@@ -44,21 +45,11 @@ async def add_favorite(
     if user_id == listener_id:
         raise HTTPException(status_code=400, detail="Cannot favorite yourself")
 
+    # Validate listener is active and verified
+    listener = await validate_listener_active_and_verified(listener_id)
+
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        # Check if listener exists and has listener role
-        listener = await conn.fetchrow(
-            """
-            SELECT u.user_id, u.username
-            FROM users u
-            JOIN user_roles ur ON u.user_id = ur.user_id
-            WHERE u.user_id = $1 AND ur.role = 'listener'
-            """,
-            listener_id
-        )
-
-        if not listener:
-            raise HTTPException(status_code=404, detail="Listener not found")
 
         # Check if already favorited
         existing = await conn.fetchrow(
@@ -112,8 +103,13 @@ async def get_favorites(
         base_query = """
             FROM user_favorites uf
             JOIN users u ON uf.favoritee_id = u.user_id
-            LEFT JOIN user_status us ON u.user_id = us.user_id
-            WHERE uf.favoriter_id = $1
+            JOIN user_roles ur ON u.user_id = ur.user_id
+            JOIN user_status us ON u.user_id = us.user_id
+            JOIN listener_profile lp ON u.user_id = lp.listener_id
+            WHERE uf.favoriter_id = $1 
+            AND ur.role = 'listener'
+            AND us.is_active = true
+            AND lp.verification_status = true
         """
         params = [user_id]
 
