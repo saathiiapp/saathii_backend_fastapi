@@ -135,12 +135,14 @@ async def verify_otp(data: VerifyRequest):
     _validate_phone(data.phone)
     _validate_otp(data.otp)
     
+    # Rate limiting: max 10 verification attempts per 5 minutes per phone
     try:
-        stored_otp = await redis_client.get(f"otp:{data.phone}")
-        if not stored_otp or stored_otp != data.otp:
-            raise HTTPException(status_code=400, detail="Invalid or expired OTP")
-
-        await redis_client.delete(f"otp:{data.phone}")
+        verify_rl_key = f"verify_rl:{data.phone}"
+        count = await redis_client.incr(verify_rl_key)
+        if count == 1:
+            await redis_client.expire(verify_rl_key, 300)  # 5 minutes
+        if count > 10:
+            raise HTTPException(status_code=429, detail="Too many verification attempts. Please try later.")
     except redis.exceptions.ReadOnlyError:
         raise HTTPException(
             status_code=503, 
@@ -151,40 +153,91 @@ async def verify_otp(data: VerifyRequest):
             status_code=503, 
             detail="Service temporarily unavailable. Please try again later."
         )
+    
+    # Use Redis transaction to atomically check and delete OTP
+    otp_key = f"otp:{data.phone}"
+    otp_valid = False
+    
+    try:
+        # Use Redis pipeline for atomic operations
+        async with redis_client.pipeline() as pipe:
+            # Start watching the OTP key
+            await pipe.watch(otp_key)
+            
+            # Get the current OTP value
+            stored_otp = await pipe.get(otp_key)
+            
+            if stored_otp and stored_otp == data.otp:
+                # OTP is valid, start transaction
+                pipe.multi()
+                pipe.delete(otp_key)
+                await pipe.execute()
+                otp_valid = True
+            else:
+                # OTP is invalid or expired, just unwatch
+                await pipe.unwatch()
+                
+    except redis.exceptions.ReadOnlyError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable. Please try again later."
+        )
+    except redis.exceptions.ConnectionError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable. Please try again later."
+        )
+    except redis.exceptions.WatchError:
+        # Another process modified the OTP key, it's likely already used
+        raise HTTPException(status_code=400, detail="OTP already used or expired")
     except Exception as e:
         print(f"Unexpected error in OTP verify: {e}")
         raise HTTPException(
             status_code=500, 
             detail="Internal server error. Please try again later."
         )
+    
+    if not otp_valid:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    
+    # Now proceed with database operations
     pool = await get_db_pool()
     async with pool.acquire() as conn:
-        user = await conn.fetchrow("SELECT * FROM users WHERE phone=$1", data.phone)
+        try:
+            user = await conn.fetchrow("SELECT * FROM users WHERE phone=$1", data.phone)
 
-        if not user:
-            # Issue a short-lived registration token to allow client to call /auth/register
-            reg_token = create_registration_token({"phone": data.phone})
-            return VerifyResponse(status="needs_registration", registration_token=reg_token)
+            if not user:
+                # Issue a short-lived registration token to allow client to call /auth/register
+                reg_token = create_registration_token({"phone": data.phone})
+                return VerifyResponse(status="needs_registration", registration_token=reg_token)
 
-        # Set user online when they log in
-        await conn.execute(
-            """
-            UPDATE user_status 
-            SET is_online = TRUE, last_seen = now(), updated_at = now()
-            WHERE user_id = $1
-            """,
-            user["user_id"]
-        )
+            # Set user online when they log in
+            await conn.execute(
+                """
+                UPDATE user_status 
+                SET is_online = TRUE, last_seen = now(), updated_at = now()
+                WHERE user_id = $1
+                """,
+                user["user_id"]
+            )
 
-        subject = {"user_id": user["user_id"], "phone": user["phone"]}
-        access_token = create_access_token(subject)
-        refresh_token = create_refresh_token(subject)
-        refresh_payload = decode_jwt(refresh_token)
-        if not refresh_payload or not refresh_payload.get("jti"):
-            raise HTTPException(status_code=500, detail="Failed to issue refresh token")
-        refresh_ttl = int(refresh_payload["exp"] - time.time())
-        await redis_client.setex(f"refresh:{user['user_id']}:{refresh_payload['jti']}", refresh_ttl, "1")
-        return VerifyResponse(status="registered", access_token=access_token, refresh_token=refresh_token)
+            subject = {"user_id": user["user_id"], "phone": user["phone"]}
+            access_token = create_access_token(subject)
+            refresh_token = create_refresh_token(subject)
+            refresh_payload = decode_jwt(refresh_token)
+            if not refresh_payload or not refresh_payload.get("jti"):
+                raise HTTPException(status_code=500, detail="Failed to issue refresh token")
+            refresh_ttl = int(refresh_payload["exp"] - time.time())
+            await redis_client.setex(f"refresh:{user['user_id']}:{refresh_payload['jti']}", refresh_ttl, "1")
+            return VerifyResponse(status="registered", access_token=access_token, refresh_token=refresh_token)
+            
+        except Exception as e:
+            print(f"Database error in OTP verify: {e}")
+            # If database operations fail, we can't recover the OTP, but we should provide a clear error
+            raise HTTPException(
+                status_code=500, 
+                detail="Failed to complete verification. Please request a new OTP."
+            )
 
 
 @router.post("/auth/both/register", response_model=TokenPairResponse)
