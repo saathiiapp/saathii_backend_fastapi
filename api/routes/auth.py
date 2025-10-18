@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Header
 import re
 import time
+import redis.exceptions
 from api.clients.redis_client import redis_client
 from api.clients.jwt_handler import (
     create_access_token,
@@ -53,52 +54,109 @@ async def username_available(username: str):
 @router.post("/auth/both/otp/request")
 async def request_otp(data: OTPRequest):
     _validate_phone(data.phone)
-    # Simple rate limiting: 5 requests per 15 minutes per phone
-    rl_key = f"otp_rl:{data.phone}"
-    count = await redis_client.incr(rl_key)
-    if count == 1:
-        await redis_client.expire(rl_key, 900)
-    if count > 5:
-        raise HTTPException(status_code=429, detail="Too many OTP requests. Please try later.")
+    
+    try:
+        # Simple rate limiting: 5 requests per 15 minutes per phone
+        rl_key = f"otp_rl:{data.phone}"
+        count = await redis_client.incr(rl_key)
+        if count == 1:
+            await redis_client.expire(rl_key, 900)
+        if count > 5:
+            raise HTTPException(status_code=429, detail="Too many OTP requests. Please try later.")
 
-    otp = generate_otp()
-    await redis_client.setex(f"otp:{data.phone}", 300, otp)
-    send_otp_message(data.phone, otp)
-    return {"message": "OTP sent"}
+        otp = generate_otp()
+        await redis_client.setex(f"otp:{data.phone}", 300, otp)
+        send_otp_message(data.phone, otp)
+        return {"message": "OTP sent"}
+    
+    except redis.exceptions.ReadOnlyError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable. Please try again later."
+        )
+    except redis.exceptions.ConnectionError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable. Please try again later."
+        )
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Unexpected error in OTP request: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Internal server error. Please try again later."
+        )
 
 
 @router.post("/auth/both/otp/resend")
 async def resend_otp(data: OTPRequest):
     _validate_phone(data.phone)
-    # Short throttle: allow one resend every 60 seconds per phone
-    throttle_key = f"otp_resend:{data.phone}"
-    if await redis_client.get(throttle_key):
-        raise HTTPException(status_code=429, detail="Please wait before requesting another OTP")
-    await redis_client.setex(throttle_key, 60, "1")
+    
+    try:
+        # Short throttle: allow one resend every 60 seconds per phone
+        throttle_key = f"otp_resend:{data.phone}"
+        if await redis_client.get(throttle_key):
+            raise HTTPException(status_code=429, detail="Please wait before requesting another OTP")
+        await redis_client.setex(throttle_key, 60, "1")
 
-    otp_key = f"otp:{data.phone}"
-    current_otp = await redis_client.get(otp_key)
-    if current_otp:
-        # Re-send the same OTP without changing TTL
-        send_otp_message(data.phone, current_otp)
-        return {"message": "OTP re-sent"}
+        otp_key = f"otp:{data.phone}"
+        current_otp = await redis_client.get(otp_key)
+        if current_otp:
+            # Re-send the same OTP without changing TTL
+            send_otp_message(data.phone, current_otp)
+            return {"message": "OTP re-sent"}
 
-    # No active OTP; generate a new one
-    otp = generate_otp()
-    await redis_client.setex(otp_key, 300, otp)
-    send_otp_message(data.phone, otp)
-    return {"message": "OTP sent"}
+        # No active OTP; generate a new one
+        otp = generate_otp()
+        await redis_client.setex(otp_key, 300, otp)
+        send_otp_message(data.phone, otp)
+        return {"message": "OTP sent"}
+    
+    except redis.exceptions.ReadOnlyError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable. Please try again later."
+        )
+    except redis.exceptions.ConnectionError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable. Please try again later."
+        )
+    except Exception as e:
+        print(f"Unexpected error in OTP resend: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Internal server error. Please try again later."
+        )
 
 
 @router.post("/auth/both/otp/verify", response_model=VerifyResponse)
 async def verify_otp(data: VerifyRequest):
     _validate_phone(data.phone)
     _validate_otp(data.otp)
-    stored_otp = await redis_client.get(f"otp:{data.phone}")
-    if not stored_otp or stored_otp != data.otp:
-        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    
+    try:
+        stored_otp = await redis_client.get(f"otp:{data.phone}")
+        if not stored_otp or stored_otp != data.otp:
+            raise HTTPException(status_code=400, detail="Invalid or expired OTP")
 
-    await redis_client.delete(f"otp:{data.phone}")
+        await redis_client.delete(f"otp:{data.phone}")
+    except redis.exceptions.ReadOnlyError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable. Please try again later."
+        )
+    except redis.exceptions.ConnectionError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable. Please try again later."
+        )
+    except Exception as e:
+        print(f"Unexpected error in OTP verify: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Internal server error. Please try again later."
+        )
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         user = await conn.fetchrow("SELECT * FROM users WHERE phone=$1", data.phone)

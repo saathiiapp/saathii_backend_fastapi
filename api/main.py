@@ -5,11 +5,24 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from api.routes import auth, user, call, wallet, feed, favorites, block, report, badge, status, verification, listener_preferences, help_support
 from api.clients.db import close_db_pool
+from api.clients.redis_client import test_redis_connection
+import logging
+
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: nothing required right now
+    # Startup: Test Redis connection
+    try:
+        await test_redis_connection()
+        logger.info("Application startup completed successfully")
+    except Exception as e:
+        logger.error(f"Application startup failed: {e}")
+        # Don't raise the exception to allow the app to start, but log the issue
+        # The error handling in individual endpoints will catch Redis issues
+    
     yield
+    
     # Shutdown: gracefully close the DB pool
     await close_db_pool()
 
