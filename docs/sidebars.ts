@@ -30,6 +30,7 @@ const sidebars: SidebarsConfig = {
         'api/blocking',
         'api/verification',
         'api/listener-verification',
+        'api/help-support',
         // 'api/websocket-realtime', // removed
         'api/database-impact',
         'api/swagger-ui',
@@ -60,6 +61,7 @@ const sidebars: SidebarsConfig = {
         'guides/react-native-feeds',
         'guides/react-native-favorites',
         'guides/react-native-blocking',
+        'guides/react-native-help-support',
         'guides/react-native-websocket',
       ],
     },

@@ -168,6 +168,24 @@ CREATE TABLE IF NOT EXISTS user_delete_requests (
   created_at     TIMESTAMPTZ DEFAULT now()
 );
 
+-- 15) Help and Support Cases
+CREATE TABLE IF NOT EXISTS help_support (
+  support_id      SERIAL PRIMARY KEY,
+  user_id         INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  issue_type      VARCHAR(30) NOT NULL CHECK (issue_type IN ('call_session_support', 'payment_support', 'other')),
+  issue           TEXT NOT NULL,
+  description     TEXT,
+  image_s3_urls   TEXT[],  -- array of S3 URLs for support images
+  require_call    BOOLEAN DEFAULT FALSE,
+  call_id         INT REFERENCES user_calls(call_id) ON DELETE SET NULL,  -- required for call_session_support
+  transaction_id  INT REFERENCES user_transactions(transaction_id) ON DELETE SET NULL,  -- required for payment_support
+  status          VARCHAR(20) CHECK (status IN ('active', 'resolved')) DEFAULT 'active',
+  admin_notes     TEXT,  -- internal admin notes
+  resolved_at     TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
 -- Indexes for common filters/queries
 CREATE INDEX idx_calls_user ON user_calls(user_id);
 CREATE INDEX idx_calls_listener ON user_calls(listener_id);
