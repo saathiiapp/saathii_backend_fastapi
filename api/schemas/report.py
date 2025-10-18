@@ -35,7 +35,7 @@ class ReportedUsersResponse(BaseModel):
 
 
 class AdminReportedUser(BaseModel):
-    report_id: int
+    report_id: str
     reporter_id: int
     reporter_username: Optional[str] = None
     reported_id: int
