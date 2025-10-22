@@ -21,6 +21,15 @@ st.sidebar.info(
 
 
 # ---------------- FETCH DATA ----------------
+st.markdown(
+    """
+    <style>
+    .mini-stats { font-size: 12px; color: #666; margin-top: 6px; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 def fetch_data():
     try:
         verification_data = requests.get(VERIFY_API_URL).json()
@@ -95,9 +104,10 @@ if page == "🏠 Home (Dashboard)":
         st.markdown("### 👤 Customers")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Total", users_stats.get("total", 0))
-        c2.metric("Online", users_stats.get("online", 0))
-        c3.metric("Available", users_stats.get("available", 0))
-        c4.metric("Busy", users_stats.get("busy", 0))
+        st.markdown(
+            f"<div class='mini-stats'>Online: {users_stats.get('online', 0)} | Available: {users_stats.get('available', 0)} | Busy: {users_stats.get('busy', 0)}</div>",
+            unsafe_allow_html=True,
+        )
 
     # LISTENER STATS
     with col2:
@@ -106,7 +116,10 @@ if page == "🏠 Home (Dashboard)":
         l1.metric("Total", total_all_listeners)
         l2.metric("Verified", total_verified)
         l3.metric("Unverified", total_unverified)
-        l4.metric("Online", listeners_stats.get("online", 0))
+        st.markdown(
+            f"<div class='mini-stats'>Online: {listeners_stats.get('online', 0)} | Available: {listeners_stats.get('available', 0)} | Busy: {listeners_stats.get('busy', 0)}</div>",
+            unsafe_allow_html=True,
+        )
 
     st.markdown("---")
     st.subheader("🧠 Insights (Coming Soon)")
