@@ -18,7 +18,7 @@ WS_VERIFICATION_URL = "ws://api:8000/ws/verification"
 # ---------------- SIDEBAR NAV ----------------
 st.sidebar.title("📊 Saathii Admin")
 page = st.sidebar.radio(
-    "Navigate", ["🏠 Home (Dashboard)", "🎧 Listeners Verification", "👥 User Management"], index=0
+    "Navigate", ["🏠 Home (Dashboard)", "🎧 Listeners", "👥 User Management"], index=0
 )
 st.sidebar.markdown("---")
 st.sidebar.info(
@@ -581,7 +581,7 @@ if page == "🏠 Home (Dashboard)":
     )
 
 # ---------------- PAGE 2: LISTENERS TABLE ----------------
-elif page == "🎧 Listeners Table":
+elif page == "🎧 Listeners":
     st.title("🎧 Listener Verification Table")
 
     tab1, tab2 = st.tabs(
