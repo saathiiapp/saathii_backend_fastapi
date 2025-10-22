@@ -5,11 +5,11 @@ import pandas as pd
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Saathii Admin Dashboard", layout="wide")
 
-VERIFY_API_URL = "https://saathiiapp.com/admin/verification/pending"
-WEBHOOK_URL = "https://saathiiapp.com/admin/verification/webhook"
-STATS_API_URL = "https://saathiiapp.com/both/feed/stats"
-USERS_API_URL = "https://saathiiapp.com/admin/users"
-USER_STATUS_API_URL = "https://saathiiapp.com/admin/users/status"
+VERIFY_API_URL = "http://api:8000/admin/verification/pending"
+WEBHOOK_URL = "http://api:8000/admin/verification/webhook"
+STATS_API_URL = "http://api:8000/both/feed/stats"
+USERS_API_URL = "http://api:8000/admin/users"
+USER_STATUS_API_URL = "http://api:8000/admin/users/status"
 
 # ---------------- SIDEBAR NAV ----------------
 st.sidebar.title("📊 Saathii Admin")
