@@ -8,3 +8,6 @@ PyJWT==2.10.1
 pydantic==2.11.9
 boto3==1.35.0
 python-multipart==0.0.9
+streamlit==1.50.0
+pandas==2.3.3
+requests==2.32.5
