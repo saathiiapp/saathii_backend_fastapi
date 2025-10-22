@@ -227,9 +227,13 @@ async def get_all_users(
         
         if search:
             param_count += 1
-            where_conditions.append(f"(u.username ILIKE ${param_count} OR u.phone ILIKE ${param_count})")
+            username_param = param_count
+            param_count += 1
+            phone_param = param_count
+            where_conditions.append(f"(u.username ILIKE ${username_param} OR u.phone ILIKE ${phone_param})")
             search_term = f"%{search}%"
-            params.extend([search_term, search_term])
+            params.append(search_term)
+            params.append(search_term)
         
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
         

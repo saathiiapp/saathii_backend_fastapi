@@ -8,15 +8,17 @@ st.set_page_config(page_title="Saathii Admin Dashboard", layout="wide")
 VERIFY_API_URL = "https://saathiiapp.com/admin/verification/pending"
 WEBHOOK_URL = "https://saathiiapp.com/admin/verification/webhook"
 STATS_API_URL = "https://saathiiapp.com/both/feed/stats"
+USERS_API_URL = "https://saathiiapp.com/admin/users"
+USER_STATUS_API_URL = "https://saathiiapp.com/admin/users/status"
 
 # ---------------- SIDEBAR NAV ----------------
 st.sidebar.title("📊 Saathii Admin")
 page = st.sidebar.radio(
-    "Navigate", ["🏠 Home (Dashboard)", "🎧 Listeners Table"], index=0
+    "Navigate", ["🏠 Home (Dashboard)", "🎧 Listeners Table", "👥 User Management"], index=0
 )
 st.sidebar.markdown("---")
 st.sidebar.info(
-    "Manage verifications, monitor listeners, and track live platform stats."
+    "Clean admin interface for user management, verifications, and platform monitoring."
 )
 
 
@@ -24,79 +26,410 @@ st.sidebar.info(
 st.markdown(
     """
     <style>
-    /* ========== Neon Theme ========== */
+    /* ========== MINIMALIST THEME UI ========== */
     :root {
-        --bg: #0a0f1e;
-        --panel: #0f172a;
-        --text: #e6f0ff;
-        --muted: #9db0d0;
-        --accent: #00e5ff; /* neon cyan */
-        --accent-2: #ff00ff; /* neon magenta */
-        --accent-3: #39ff14; /* neon green */
-        --glow: 0 0 10px rgba(0,229,255,0.6), 0 0 20px rgba(0,229,255,0.4), 0 0 34px rgba(0,229,255,0.25);
-        --soft-glow: 0 0 6px rgba(0,229,255,0.4), 0 0 16px rgba(0,229,255,0.25);
-        --ring: 0 0 0 1px rgba(0,229,255,0.45) inset;
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9fa;
+        --bg-tertiary: #f1f3f4;
+        --text-primary: #2d3748;
+        --text-secondary: #718096;
+        --text-accent: #3182ce;
+        --accent-blue: #3182ce;
+        --accent-green: #38a169;
+        --accent-red: #e53e3e;
+        --accent-orange: #dd6b20;
+        --border-light: #e2e8f0;
+        --border-medium: #cbd5e0;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+        --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+        --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
     }
 
-    .stApp, .stApp header { background: radial-gradient(1000px 600px at 10% 0%, rgba(255,0,255,0.06), transparent), radial-gradient(1000px 800px at 100% 0%, rgba(0,229,255,0.07), transparent), var(--bg) !important; }
-    .stApp, .stMarkdown, .stText, .stSelectbox, .stRadio, .stSubheader, .stHeader, .stCaption { color: var(--text) !important; }
-    .block-container { padding-top: 1.5rem; }
+    /* Main App Styling */
+    .stApp {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
 
-    /* Sidebar */
+    .stApp > div {
+        background: transparent !important;
+    }
+
+    /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(20,27,55,0.95), rgba(13,19,41,0.95));
-        border-right: 1px solid rgba(0,229,255,0.2);
-        box-shadow: 6px 0 24px rgba(0,0,0,0.35);
+        background: var(--bg-primary) !important;
+        border-right: 1px solid var(--border-light) !important;
+        box-shadow: var(--shadow-md) !important;
     }
-    section[data-testid="stSidebar"] * { color: var(--text) !important; }
-    section[data-testid="stSidebar"] .stMarkdown h1, h2, h3 { text-shadow: var(--soft-glow); }
 
-    /* Headings */
-    h1, h2, h3, .stHeader, .stSubheader { color: var(--text) !important; text-shadow: var(--soft-glow); }
-    hr { border-color: rgba(0,229,255,0.2) !important; }
+    section[data-testid="stSidebar"] * {
+        color: var(--text-primary) !important;
+    }
 
-    /* Links */
-    a { color: var(--accent) !important; text-decoration: none; }
-    a:hover { text-shadow: var(--soft-glow); }
+    /* Headers and Text */
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .stMarkdown, .stText, .stSubheader, .stHeader, .stCaption {
+        color: var(--text-primary) !important;
+    }
 
     /* Buttons */
     .stButton > button {
-        background: rgba(0,229,255,0.08);
-        color: var(--text);
-        border: 1px solid rgba(0,229,255,0.5);
-        border-radius: 10px;
-        box-shadow: var(--ring), var(--soft-glow);
-        transition: all .15s ease-out;
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-medium) !important;
+        border-radius: 6px !important;
+        box-shadow: var(--shadow-sm) !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+        padding: 8px 16px !important;
     }
-    .stButton > button:hover { box-shadow: var(--glow); transform: translateY(-1px); }
-    .stButton > button:active { transform: translateY(0); }
 
-    /* Metrics */
-    [data-testid="stMetric"] { background: rgba(7,12,30,0.7); padding: 12px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.18); box-shadow: var(--soft-glow); }
-    [data-testid="stMetricLabel"] { color: var(--muted) !important; }
-    [data-testid="stMetricValue"] { color: var(--accent) !important; text-shadow: var(--glow); }
+    .stButton > button:hover {
+        background: var(--bg-secondary) !important;
+        border-color: var(--accent-blue) !important;
+        box-shadow: var(--shadow-md) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    .stButton > button:active {
+        transform: translateY(0) !important;
+    }
+
+    /* Primary Buttons */
+    .stButton > button[kind="primary"] {
+        background: var(--accent-blue) !important;
+        color: white !important;
+        border-color: var(--accent-blue) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .stButton > button[kind="primary"]:hover {
+        background: #2c5aa0 !important;
+        box-shadow: var(--shadow-md) !important;
+    }
+
+    /* Selectboxes and Inputs */
+    .stSelectbox > div > div {
+        background: var(--bg-primary) !important;
+        border: 1px solid var(--border-medium) !important;
+        border-radius: 6px !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .stSelectbox > div > div > div {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .stSelectbox label {
+        color: var(--text-primary) !important;
+        font-weight: 500 !important;
+    }
+
+    .stTextInput > div > div > input {
+        background: var(--bg-primary) !important;
+        border: 1px solid var(--border-medium) !important;
+        border-radius: 6px !important;
+        color: var(--text-primary) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .stTextInput label {
+        color: var(--text-primary) !important;
+        font-weight: 500 !important;
+    }
+
+    /* Radio Buttons */
+    .stRadio > div {
+        background: var(--bg-primary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: 6px !important;
+        padding: 12px !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .stRadio label {
+        color: var(--text-primary) !important;
+        font-weight: 500 !important;
+    }
 
     /* Tabs */
-    div[role="tablist"] > div { gap: 6px; }
-    div[role="tab"] { background: rgba(0,229,255,0.06); color: var(--text); border: 1px solid rgba(0,229,255,0.25); border-radius: 10px; }
-    div[role="tab"][aria-selected="true"] { box-shadow: var(--glow); border-color: rgba(0,229,255,0.55); }
+    div[role="tablist"] > div {
+        gap: 4px !important;
+        background: var(--bg-secondary) !important;
+        padding: 4px !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--border-light) !important;
+    }
 
-    /* DataFrame container */
-    [data-testid="stDataFrame"] { background: rgba(12,18,40,0.7); border-radius: 12px; border: 1px solid rgba(0,229,255,0.15); box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset; }
+    div[role="tab"] {
+        background: transparent !important;
+        color: var(--text-secondary) !important;
+        border: 1px solid transparent !important;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+        padding: 8px 16px !important;
+    }
 
-    /* Mini stats */
-    .mini-stats { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    div[role="tab"][aria-selected="true"] {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        box-shadow: var(--shadow-sm) !important;
+        border-color: var(--border-medium) !important;
+    }
 
-    /* Mini list styles for listeners */
-    .mini-card { border: 1px solid rgba(0,229,255,0.25); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; background: linear-gradient(180deg, rgba(8,14,36,0.85), rgba(10,16,38,0.85)); box-shadow: var(--soft-glow); }
-    .mini-card:hover { box-shadow: var(--glow); }
-    .mini-title { font-weight: 700; font-size: 15px; margin: 0 0 6px 0; color: var(--text); text-shadow: 0 0 8px rgba(255,255,255,0.05); }
-    .mini-sub { color: var(--muted); font-size: 12px; margin: 0; }
-    .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; margin-right: 8px; border: 1px solid rgba(0,229,255,0.35); color: var(--text); background: rgba(0,229,255,0.08); box-shadow: var(--soft-glow); }
-    .tag-verified { border-color: rgba(57,255,20,0.45); background: rgba(57,255,20,0.12); box-shadow: 0 0 10px rgba(57,255,20,0.35); }
-    .tag-unverified { border-color: rgba(255,0,255,0.45); background: rgba(255,0,255,0.10); box-shadow: 0 0 10px rgba(255,0,255,0.35); }
-    .muted { color: var(--muted); font-size: 12px; }
-    .truncate { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    div[role="tab"]:hover {
+        background: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* DataFrames */
+    .stDataFrame {
+        background: var(--bg-primary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: 8px !important;
+        box-shadow: var(--shadow-sm) !important;
+        overflow: hidden !important;
+    }
+
+    .stDataFrame table {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .stDataFrame th {
+        background: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-light) !important;
+        font-weight: 600 !important;
+        font-size: 0.875rem !important;
+    }
+
+    .stDataFrame td {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-light) !important;
+    }
+
+    .stDataFrame tr:hover {
+        background: var(--bg-secondary) !important;
+    }
+
+    /* Metrics */
+    [data-testid="stMetric"] {
+        background: var(--bg-primary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: 8px !important;
+        padding: 16px !important;
+        box-shadow: var(--shadow-sm) !important;
+        text-align: center !important;
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: var(--text-secondary) !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--text-primary) !important;
+        font-weight: 700 !important;
+        font-size: 1.5rem !important;
+    }
+
+    /* Expanders */
+    .stExpander {
+        background: var(--bg-primary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: 8px !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .stExpander > div > div {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* Toggle Switches */
+    .stToggle {
+        background: var(--bg-primary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: 8px !important;
+        padding: 12px !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .stToggle > label {
+        color: var(--text-primary) !important;
+        font-weight: 500 !important;
+    }
+
+    /* Success/Error Messages */
+    .stSuccess {
+        background: #f0fff4 !important;
+        color: #22543d !important;
+        border: 1px solid #9ae6b4 !important;
+        border-radius: 6px !important;
+        box-shadow: var(--shadow-sm) !important;
+        font-weight: 500 !important;
+    }
+
+    .stError {
+        background: #fed7d7 !important;
+        color: #742a2a !important;
+        border: 1px solid #feb2b2 !important;
+        border-radius: 6px !important;
+        box-shadow: var(--shadow-sm) !important;
+        font-weight: 500 !important;
+    }
+
+    .stInfo {
+        background: #ebf8ff !important;
+        color: #2a4365 !important;
+        border: 1px solid #90cdf4 !important;
+        border-radius: 6px !important;
+        box-shadow: var(--shadow-sm) !important;
+        font-weight: 500 !important;
+    }
+
+    .stWarning {
+        background: #fef5e7 !important;
+        color: #744210 !important;
+        border: 1px solid #fbd38d !important;
+        border-radius: 6px !important;
+        box-shadow: var(--shadow-sm) !important;
+        font-weight: 500 !important;
+    }
+
+    /* Links */
+    a {
+        color: var(--accent-blue) !important;
+        text-decoration: none !important;
+        transition: all 0.2s ease !important;
+    }
+
+    a:hover {
+        color: #2c5aa0 !important;
+        text-decoration: underline !important;
+    }
+
+    /* Horizontal Rules */
+    hr {
+        border: 1px solid var(--border-light) !important;
+        margin: 20px 0 !important;
+    }
+
+    /* Custom Cards */
+    .mini-card {
+        background: var(--bg-primary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: 8px !important;
+        padding: 16px !important;
+        margin-bottom: 12px !important;
+        box-shadow: var(--shadow-sm) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .mini-card:hover {
+        box-shadow: var(--shadow-md) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    .mini-title {
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        font-size: 16px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .mini-sub {
+        color: var(--text-secondary) !important;
+        font-size: 14px !important;
+        margin: 4px 0 !important;
+    }
+
+    /* Tags */
+    .tag {
+        display: inline-block !important;
+        padding: 4px 12px !important;
+        border-radius: 16px !important;
+        font-size: 12px !important;
+        margin-right: 8px !important;
+        margin-bottom: 4px !important;
+        border: 1px solid var(--border-medium) !important;
+        color: var(--text-secondary) !important;
+        background: var(--bg-secondary) !important;
+        font-weight: 500 !important;
+    }
+
+    .tag-verified {
+        border-color: var(--accent-green) !important;
+        color: var(--accent-green) !important;
+        background: #f0fff4 !important;
+    }
+
+    .tag-unverified {
+        border-color: var(--accent-red) !important;
+        color: var(--accent-red) !important;
+        background: #fed7d7 !important;
+    }
+
+    /* Fade inactive user rows */
+    .inactive-row {
+        opacity: 0.4 !important;
+        background: var(--bg-tertiary) !important;
+    }
+    .inactive-row td {
+        background: var(--bg-tertiary) !important;
+        color: var(--text-secondary) !important;
+    }
+
+    /* Footer */
+    .footer {
+        text-align: center !important;
+        padding: 24px 0 !important;
+        margin-top: 40px !important;
+        border-top: 1px solid var(--border-light) !important;
+        color: var(--text-secondary) !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+        width: 8px !important;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg-secondary) !important;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--border-medium) !important;
+        border-radius: 4px !important;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--accent-blue) !important;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .stButton > button {
+            font-size: 14px !important;
+            padding: 6px 12px !important;
+        }
+        
+        [data-testid="stMetricValue"] {
+            font-size: 1.25rem !important;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -133,7 +466,6 @@ users_stats = stats_data.get("users", {})
 
 
 # ---------------- VERIFY DIALOG ----------------
-@st.dialog("🔒 Verify Listener")
 def verify_listener_dialog(listener):
     st.write(f"Are you sure you want to verify **{listener['username']}**?")
     st.markdown(
@@ -141,21 +473,28 @@ def verify_listener_dialog(listener):
     )
     st.markdown(f"[🎧 Listen to Audio]({listener['audio_file_url']})")
 
-    if st.button("✅ Confirm Verification"):
-        try:
-            webhook_response = requests.post(
-                WEBHOOK_URL, json={"user_id": listener["user_id"]}
-            )
-            if webhook_response.status_code == 200:
-                st.success(
-                    f"Listener **{listener['username']}** verified successfully!"
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("✅ Confirm Verification", type="primary"):
+            try:
+                webhook_response = requests.post(
+                    WEBHOOK_URL, json={"user_id": listener["user_id"]}
                 )
-            else:
-                st.error(
-                    f"❌ Failed ({webhook_response.status_code}) for {listener['username']}"
-                )
-        except Exception as e:
-            st.error(f"Error: {e}")
+                if webhook_response.status_code == 200:
+                    st.success(
+                        f"Listener **{listener['username']}** verified successfully!"
+                    )
+                    st.rerun()
+                else:
+                    st.error(
+                        f"❌ Failed ({webhook_response.status_code}) for {listener['username']}"
+                    )
+            except Exception as e:
+                st.error(f"Error: {e}")
+    
+    with col2:
+        if st.button("❌ Cancel"):
+            st.rerun()
 
 
 # ---------------- PAGE 1: DASHBOARD ----------------
@@ -274,7 +613,16 @@ elif page == "🎧 Listeners Table":
                     )
                 with cc2:
                     if st.button("✅ Verify", key=f"verify_{listener['user_id']}"):
+                        st.session_state[f"show_dialog_{listener['user_id']}"] = True
+                        st.rerun()
+                
+                # Show dialog if triggered
+                if st.session_state.get(f"show_dialog_{listener['user_id']}", False):
+                    with st.expander(f"🔒 Verify {listener['username']}", expanded=True):
                         verify_listener_dialog(listener)
+                        if st.button("❌ Close", key=f"close_{listener['user_id']}"):
+                            st.session_state[f"show_dialog_{listener['user_id']}"] = False
+                            st.rerun()
 
     # ---------- VERIFIED ----------
     with tab2:
@@ -338,20 +686,181 @@ elif page == "🎧 Listeners Table":
                 with cc2:
                     st.markdown("<span class='muted'>No actions</span>", unsafe_allow_html=True)
 
-# ---------------- FOOTER ----------------
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap');
-    .footer {
-        text-align: center;
-        font-family: 'Dancing Script', cursive;
-        font-size: 26px;
-        color: #999;
-        margin-top: 30px;
+# ---------------- PAGE 3: USER MANAGEMENT ----------------
+elif page == "👥 User Management":
+    st.title("👥 User Management")
+    st.markdown("Manage all users (customers and listeners) with active/inactive status controls.")
+    st.markdown("---")
+
+    # Filters
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        role_filter = st.selectbox("Role", ["All", "Customer", "Listener"], index=0)
+
+    with col2:
+        status_filter = st.selectbox("Status", ["All", "Active", "Inactive"], index=0)
+
+    with col3:
+        search_username = st.text_input("Search Username", placeholder="Enter username to search...")
+
+    with col4:
+        sort_by = st.selectbox("Sort By", ["created_at", "username", "user_id"], index=0)
+    
+    # Build API parameters
+    params = {
+        "page": 1,
+        "per_page": 50,
+        "sort_by": sort_by,
+        "sort_order": "desc"
     }
-    </style>
-    <div class='footer'>© 2025 saathii.com — Admin Dashboard</div>
-    """,
-    unsafe_allow_html=True,
-)
+
+    if role_filter != "All":
+        params["role"] = role_filter.lower()
+
+    if status_filter != "All":
+        params["is_active"] = status_filter == "Active"
+
+    if search_username and search_username.strip():
+        params["search"] = search_username.strip()
+    
+    # Fetch users data
+    try:
+        response = requests.get(USERS_API_URL, params=params)
+        if response.status_code == 200:
+            users_data = response.json()
+            users = users_data.get("users", [])
+            total_count = users_data.get("total_count", 0)
+            
+            # Display search results info
+            if search_username and search_username.strip():
+                st.subheader(f"Search Results for '{search_username}' ({total_count} found)")
+            else:
+                st.subheader(f"Users ({total_count} total)")
+
+            if users:
+                # Create DataFrame for display
+                df_data = []
+                for user in users:
+                    roles_str = ", ".join(user.get("roles", []))
+                    status_text = "🟢 Active" if user.get("is_active") else "🔴 Inactive"
+                    online_text = "🟢 Online" if user.get("is_online") else "⚪ Offline"
+                    verified_text = "✅ Verified" if user.get("is_verified") else "⏳ Pending" if user.get("is_verified") is False else "N/A"
+                    
+                    df_data.append({
+                        "User ID": user.get("user_id"),
+                        "Username": user.get("username", "N/A"),
+                        "Phone": user.get("phone"),
+                        "Roles": roles_str,
+                        "Status": status_text,
+                        "Online": online_text,
+                        "Verified": verified_text if "listener" in user.get("roles", []) else "N/A",
+                        "Country": user.get("country", "N/A"),
+                        "Created": user.get("created_at", "N/A")[:10] if user.get("created_at") else "N/A",
+                        "is_active": user.get("is_active")  # Keep this for styling
+                    })
+                
+                df = pd.DataFrame(df_data)
+                
+                # Display the table with custom styling for inactive rows
+                st.dataframe(
+                    df.drop(columns=['is_active']),  # Hide the is_active column from display
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Add custom styling for inactive rows using st.markdown
+                if not df.empty:
+                    st.markdown(
+                        """
+                        <script>
+                        // Apply faded styling to inactive rows
+                        setTimeout(function() {
+                            const table = document.querySelector('[data-testid="stDataFrame"] table');
+                            if (table) {
+                                const rows = table.querySelectorAll('tbody tr');
+                                rows.forEach((row, index) => {
+                                    const isActive = """ + str(df['is_active'].tolist()).replace("'", '"') + """[index];
+                                    if (!isActive) {
+                                        row.style.opacity = '0.5';
+                                        row.style.backgroundColor = '#f8f9fa';
+                                        const cells = row.querySelectorAll('td');
+                                        cells.forEach(cell => {
+                                            cell.style.backgroundColor = '#f8f9fa';
+                                            cell.style.color = '#6c757d';
+                                        });
+                                    }
+                                });
+                            }
+                        }, 100);
+                        </script>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                
+                # User management controls
+                st.markdown("### 🔧 User Status Management")
+                
+                # Create columns for user selection and status toggle
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    # User selection dropdown
+                    user_options = {}
+                    for user in users:
+                        username = user.get('username') or f"User {user['user_id']}"
+                        display_name = f"{username} (ID: {user['user_id']})"
+                        user_options[display_name] = user['user_id']
+                    selected_user = st.selectbox("Select User to Manage", list(user_options.keys()))
+                    selected_user_id = user_options[selected_user]
+                
+                with col2:
+                    # Find current status of selected user
+                    current_user = next((u for u in users if u['user_id'] == selected_user_id), None)
+                    if current_user:
+                        current_status = current_user.get('is_active', False)
+                        new_status = st.toggle(
+                            "Active Status", 
+                            value=current_status,
+                            help="Toggle to activate/deactivate user account"
+                        )
+                        
+                        if new_status != current_status:
+                            if st.button("Update Status", type="primary"):
+                                # Update user status
+                                update_data = {
+                                    "user_id": selected_user_id,
+                                    "is_active": new_status
+                                }
+                                
+                                try:
+                                    update_response = requests.put(USER_STATUS_API_URL, json=update_data)
+                                    if update_response.status_code == 200:
+                                        result = update_response.json()
+                                        st.success(f"✅ {result.get('message', 'Status updated successfully')}")
+                                        st.rerun()  # Refresh the page to show updated data
+                                    else:
+                                        st.error(f"❌ Failed to update status: {update_response.text}")
+                                except Exception as e:
+                                    st.error(f"❌ Error updating status: {str(e)}")
+                    else:
+                        st.warning("User not found in current view")
+                
+                # Pagination info
+                st.markdown(f"**Showing {len(users)} of {total_count} users**")
+                
+            else:
+                if search_username and search_username.strip():
+                    st.info(f"No users found matching username '{search_username}' with current filters.")
+                else:
+                    st.info("No users found matching the current filters.")
+                
+        else:
+            st.error(f"Failed to fetch users data: {response.status_code} - {response.text}")
+            
+    except Exception as e:
+        st.error(f"Error fetching users data: {str(e)}")
+
+# ---------------- FOOTER ----------------
+st.markdown("---")
+st.markdown("© 2025 Saathii Admin Dashboard")
