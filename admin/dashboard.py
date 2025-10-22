@@ -6,7 +6,16 @@ import websockets
 import json
 
 # ---------------- CONFIG ----------------
-st.set_page_config(page_title="Saathii Admin Dashboard", layout="wide")
+st.set_page_config(
+    page_title="Saathii Admin Dashboard", 
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
 
 VERIFY_API_URL = "http://api:8000/admin/verification/pending"
 WEBHOOK_URL = "http://api:8000/admin/verification/webhook"
@@ -48,6 +57,16 @@ st.markdown(
         --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
         --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
     }
+
+    /* Force light theme and hide menu elements (backup method) */
+    .stApp {
+        color-scheme: light !important;
+    }
+
+    /* Hide menu elements as backup */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header[data-testid="stHeader"] {visibility: hidden;}
 
     /* Main App Styling */
     .stApp {
