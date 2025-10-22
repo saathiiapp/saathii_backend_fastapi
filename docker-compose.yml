@@ -56,7 +56,7 @@ services:
     labels:
       - "traefik.enable=true"
       # Router for HTTPS
-      - "traefik.http.routers.admin.rule=Host(`admin.saathii.com`)"
+      - "traefik.http.routers.admin.rule=Host(`admin.saathiiapp.com`)"
       - "traefik.http.routers.admin.entrypoints=websecure"
       - "traefik.http.routers.admin.tls.certresolver=myresolver"
       # Redirect HTTP -> HTTPS
