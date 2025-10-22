@@ -117,6 +117,41 @@ st.markdown(
         box-shadow: var(--shadow-md) !important;
     }
 
+    /* Refresh Button Styling */
+    .stButton > button[title*="refresh"], .stButton > button[title*="Refresh"] {
+        background: var(--accent-green) !important;
+        color: white !important;
+        border-color: var(--accent-green) !important;
+        box-shadow: var(--shadow-sm) !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    .stButton > button[title*="refresh"]:hover, .stButton > button[title*="Refresh"]:hover {
+        background: #2f855a !important;
+        box-shadow: var(--shadow-md) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    .stButton > button[title*="refresh"]:active, .stButton > button[title*="Refresh"]:active {
+        transform: translateY(0) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    /* Refresh button animation */
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .stButton > button[title*="refresh"]:hover::before, .stButton > button[title*="Refresh"]:hover::before {
+        content: "🔄";
+        animation: spin 1s linear infinite;
+        margin-right: 4px;
+    }
+
     /* Selectboxes and Inputs */
     .stSelectbox > div > div {
         background: var(--bg-primary) !important;
@@ -536,10 +571,17 @@ def verify_listener_dialog(listener):
 
 # ---------------- PAGE 1: DASHBOARD ----------------
 if page == "🏠 Home (Dashboard)":
-    st.title("🏠 Saathii Admin Dashboard")
-    st.markdown(
-        "Welcome to **Saathii.com Admin Panel** — monitor your live platform stats here."
-    )
+    # Header with refresh button
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.title("🏠 Saathii Admin Dashboard")
+        st.markdown(
+            "Welcome to **Saathii.com Admin Panel** — monitor your live platform stats here."
+        )
+    with col2:
+        if st.button("🔄 Refresh Data", type="primary", help="Click to refresh all dashboard data"):
+            st.rerun()
+    
     st.markdown("---")
 
     # ----------- SUMMARY COUNTS -----------
@@ -582,7 +624,13 @@ if page == "🏠 Home (Dashboard)":
 
 # ---------------- PAGE 2: LISTENERS TABLE ----------------
 elif page == "🎧 Listeners":
-    st.title("🎧 Listener Verification Table")
+    # Header with refresh button
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.title("🎧 Listener Verification Table")
+    with col2:
+        if st.button("🔄 Refresh Data", type="primary", help="Click to refresh all listener data", key="refresh_listeners"):
+            st.rerun()
 
     tab1, tab2 = st.tabs(
         [f"🔴 Unverified ({total_unverified})", f"🟢 Verified ({total_verified})"]
@@ -725,8 +773,15 @@ elif page == "🎧 Listeners":
 
 # ---------------- PAGE 3: USER MANAGEMENT ----------------
 elif page == "👥 User Management":
-    st.title("👥 User Management")
-    st.markdown("Manage all users (customers and listeners) with active/inactive status controls.")
+    # Header with refresh button
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.title("👥 User Management")
+        st.markdown("Manage all users (customers and listeners) with active/inactive status controls.")
+    with col2:
+        if st.button("🔄 Refresh Data", type="primary", help="Click to refresh all user data", key="refresh_users"):
+            st.rerun()
+    
     st.markdown("---")
 
     # Filters
