@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from api.clients.jwt_handler import decode_jwt
 from api.clients.redis_client import redis_client
 from api.clients.db import get_db_pool
 from api.utils.user_validation import validate_user_active
-from api.schemas.verification import VerificationStatusResponse
+from api.schemas.verification import VerificationStatusResponse, AdminVerificationListResponse, UnverifiedListenerResponse
 
 router = APIRouter(tags=["Verification"])
 
@@ -69,4 +69,95 @@ async def get_verification_status(user=Depends(get_current_user_async)):
             verification_status=verification["verification_status"],
             verification_message=verification["verification_message"],
             verified_on=verification["verified_on"]
+        )
+
+
+@router.get("/admin/verification/pending", response_model=AdminVerificationListResponse)
+async def get_unverified_listeners(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page")
+):
+    """Get list of all unverified listeners for admin review"""
+    
+    # Calculate offset for pagination
+    offset = (page - 1) * per_page
+    
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        # Get total count of unverified listeners
+        total_count = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM users u
+            JOIN user_roles ur ON u.user_id = ur.user_id
+            JOIN listener_profile lp ON u.user_id = lp.listener_id
+            WHERE ur.role = 'listener' 
+            AND lp.verification_status = FALSE
+            AND u.user_id IN (
+                SELECT user_id FROM user_status WHERE is_active = TRUE
+            )
+            """
+        )
+        
+        # Get unverified listeners with pagination
+        listeners = await conn.fetch(
+            """
+            SELECT 
+                u.user_id,
+                u.username,
+                u.sex,
+                u.bio,
+                u.interests,
+                u.profile_image_url,
+                u.preferred_language,
+                u.country,
+                lp.verification_status,
+                lp.verification_message,
+                lp.audio_file_url,
+                lp.created_at,
+                lp.updated_at
+            FROM users u
+            JOIN user_roles ur ON u.user_id = ur.user_id
+            JOIN listener_profile lp ON u.user_id = lp.listener_id
+            WHERE ur.role = 'listener' 
+            AND lp.verification_status = FALSE
+            AND u.user_id IN (
+                SELECT user_id FROM user_status WHERE is_active = TRUE
+            )
+            ORDER BY lp.created_at ASC
+            LIMIT $1 OFFSET $2
+            """,
+            per_page, offset
+        )
+        
+        # Convert to response format
+        unverified_listeners = []
+        for listener in listeners:
+            unverified_listeners.append(UnverifiedListenerResponse(
+                user_id=listener["user_id"],
+                username=listener["username"],
+                sex=listener["sex"],
+                bio=listener["bio"],
+                interests=listener["interests"],
+                profile_image_url=listener["profile_image_url"],
+                preferred_language=listener["preferred_language"],
+                country=listener["country"],
+                verification_status=listener["verification_status"],
+                verification_message=listener["verification_message"],
+                audio_file_url=listener["audio_file_url"],
+                created_at=listener["created_at"],
+                updated_at=listener["updated_at"]
+            ))
+        
+        # Calculate pagination info
+        has_next = (offset + per_page) < total_count
+        has_previous = page > 1
+        
+        return AdminVerificationListResponse(
+            unverified_listeners=unverified_listeners,
+            total_count=total_count,
+            page=page,
+            per_page=per_page,
+            has_next=has_next,
+            has_previous=has_previous
         )
