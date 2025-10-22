@@ -15,10 +15,6 @@ services:
       - "traefik.http.routers.api.rule=Host(`saathiiapp.com`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=myresolver"
-      # Redirect HTTP -> HTTPS
-      - "traefik.http.routers.api-http.rule=Host(`saathiiapp.com`)"
-      - "traefik.http.routers.api-http.entrypoints=web"
-      - "traefik.http.routers.api-http.middlewares=redirect-to-https@docker"
       # Service port (FastAPI inside container)
       - "traefik.http.services.api.loadbalancer.server.port=8000"
 
@@ -39,10 +35,6 @@ services:
       - "traefik.http.routers.docs.rule=Host(`docs.saathiiapp.com`)"
       - "traefik.http.routers.docs.entrypoints=websecure"
       - "traefik.http.routers.docs.tls.certresolver=myresolver"
-      # Redirect HTTP -> HTTPS
-      - "traefik.http.routers.docs-http.rule=Host(`docs.saathiiapp.com`)"
-      - "traefik.http.routers.docs-http.entrypoints=web"
-      - "traefik.http.routers.docs-http.middlewares=redirect-to-https@docker"
       # Service port (Nginx inside container)
       - "traefik.http.services.docs.loadbalancer.server.port=80"
 
@@ -61,10 +53,6 @@ services:
       - "traefik.http.routers.admin.rule=Host(`admin.saathiiapp.com`)"
       - "traefik.http.routers.admin.entrypoints=websecure"
       - "traefik.http.routers.admin.tls.certresolver=myresolver"
-      # Redirect HTTP -> HTTPS
-      - "traefik.http.routers.admin-http.rule=Host(`admin.saathiiapp.com`)"
-      - "traefik.http.routers.admin-http.entrypoints=web"
-      - "traefik.http.routers.admin-http.middlewares=redirect-to-https@docker"
       # Service port (Streamlit inside container)
       - "traefik.http.services.admin.loadbalancer.server.port=8501"
 
@@ -81,10 +69,6 @@ services:
       - "traefik.http.routers.dozzle.rule=Host(`logs.saathiiapp.com`)"
       - "traefik.http.routers.dozzle.entrypoints=websecure"
       - "traefik.http.routers.dozzle.tls.certresolver=myresolver"
-      # Redirect HTTP -> HTTPS
-      - "traefik.http.routers.dozzle-http.rule=Host(`logs.saathiiapp.com`)"
-      - "traefik.http.routers.dozzle-http.entrypoints=web"
-      - "traefik.http.routers.dozzle-http.middlewares=redirect-to-https@docker"
       # Service port (Dozzle inside container)
       - "traefik.http.services.dozzle.loadbalancer.server.port=8080"
 
@@ -94,6 +78,9 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
       - "--entrypoints.websecure.address=:443"
       # Enable Let's Encrypt
       - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
@@ -107,10 +94,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./letsencrypt:/letsencrypt
-    labels:
-      # Middleware to redirect HTTP → HTTPS
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
 
 networks:
   default:
