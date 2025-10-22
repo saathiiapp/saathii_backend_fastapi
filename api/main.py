@@ -58,7 +58,7 @@ app = FastAPI(
 # Security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
-    allowed_hosts=["saathiiapp.com", "*.saathiiapp.com", "localhost", "127.0.0.1"]
+    allowed_hosts=["saathiiapp.com", "*.saathiiapp.com", "localhost", "127.0.0.1", "api"]
 )
 
 app.add_middleware(
