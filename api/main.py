@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from api.routes import auth, user, call, wallet, feed, favorites, block, report, badge, status, verification, listener_preferences, help_support
+from api.routes import auth, user, call, wallet, feed, favorites, block, report, badge, status, verification, listener_preferences, help_support, realtime
 from api.clients.db import close_db_pool
 from api.clients.redis_client import test_redis_connection
 import logging
@@ -89,3 +89,4 @@ app.include_router(feed.router)
 app.include_router(verification.router)
 app.include_router(listener_preferences.router)
 app.include_router(help_support.router)
+app.include_router(realtime.router)

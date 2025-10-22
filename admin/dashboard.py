@@ -1,6 +1,9 @@
 import streamlit as st
 import requests
 import pandas as pd
+import asyncio
+import websockets
+import json
 
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Saathii Admin Dashboard", layout="wide")
@@ -10,6 +13,7 @@ WEBHOOK_URL = "http://api:8000/admin/verification/webhook"
 STATS_API_URL = "http://api:8000/both/feed/stats"
 USERS_API_URL = "http://api:8000/admin/users"
 USER_STATUS_API_URL = "http://api:8000/admin/users/status"
+WS_VERIFICATION_URL = "ws://api:8000/ws/verification"
 
 # ---------------- SIDEBAR NAV ----------------
 st.sidebar.title("📊 Saathii Admin")
@@ -465,6 +469,36 @@ listeners_stats = stats_data.get("listeners", {})
 users_stats = stats_data.get("users", {})
 
 
+# ---------------- WEBSOCKET PRODUCER ----------------
+async def send_verification_event(listener_id, verification_message="Approved by admin"):
+    """Send verification event via websocket"""
+    try:
+        async with websockets.connect(WS_VERIFICATION_URL) as websocket:
+            event = {
+                "listener_id": listener_id,
+                "verification_status": True,
+                "verification_message": verification_message
+            }
+            await websocket.send(json.dumps(event))
+            print(f"Sent verification event: {event}")
+            return True
+    except Exception as e:
+        print(f"Websocket error: {e}")
+        return False
+
+def verify_listener_websocket(listener_id, verification_message="Approved by admin"):
+    """Synchronous wrapper for websocket verification"""
+    try:
+        # Run the async function in a new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(send_verification_event(listener_id, verification_message))
+        loop.close()
+        return result
+    except Exception as e:
+        print(f"Error in websocket verification: {e}")
+        return False
+
 # ---------------- VERIFY DIALOG ----------------
 def verify_listener_dialog(listener):
     st.write(f"Are you sure you want to verify **{listener['username']}**?")
@@ -477,17 +511,20 @@ def verify_listener_dialog(listener):
     with col1:
         if st.button("✅ Confirm Verification", type="primary"):
             try:
-                webhook_response = requests.post(
-                    WEBHOOK_URL, json={"user_id": listener["user_id"]}
+                # Send verification event via websocket
+                success = verify_listener_websocket(
+                    listener["user_id"], 
+                    f"Approved by admin - {listener['username']}"
                 )
-                if webhook_response.status_code == 200:
+                
+                if success:
                     st.success(
-                        f"Listener **{listener['username']}** verified successfully!"
+                        f"Listener **{listener['username']}** verified successfully via websocket!"
                     )
                     st.rerun()
                 else:
                     st.error(
-                        f"❌ Failed ({webhook_response.status_code}) for {listener['username']}"
+                        f"❌ Failed to send verification event for {listener['username']}"
                     )
             except Exception as e:
                 st.error(f"Error: {e}")
