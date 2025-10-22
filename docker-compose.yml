@@ -53,6 +53,8 @@ services:
     depends_on:
       - api
     env_file: .env
+    networks:
+      - default
     labels:
       - "traefik.enable=true"
       # Router for HTTPS
@@ -108,3 +110,8 @@ services:
     labels:
       # Middleware to redirect HTTP → HTTPS
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+networks:
+  default:
+    driver: bridge
