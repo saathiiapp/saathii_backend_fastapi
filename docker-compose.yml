@@ -60,7 +60,7 @@ services:
       - "traefik.http.routers.admin.entrypoints=websecure"
       - "traefik.http.routers.admin.tls.certresolver=myresolver"
       # Redirect HTTP -> HTTPS
-      - "traefik.http.routers.admin-http.rule=Host(`admin.saathii.com`)"
+      - "traefik.http.routers.admin-http.rule=Host(`admin.saathiiapp.com`)"
       - "traefik.http.routers.admin-http.entrypoints=web"
       - "traefik.http.routers.admin-http.middlewares=redirect-to-https"
       # Service port (Streamlit inside container)
