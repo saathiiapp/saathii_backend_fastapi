@@ -52,3 +52,47 @@ class DeleteRequestRecord(BaseModel):
     user_role: str
     deleted_at: datetime
     created_at: datetime
+
+
+# Admin User Management Schemas (Customers & Listeners)
+class AdminUserResponse(BaseModel):
+    user_id: int
+    username: Optional[str] = None
+    phone: str
+    sex: Optional[SexEnum] = None
+    dob: Optional[date] = None
+    bio: Optional[str] = None
+    interests: Optional[List[str]] = None
+    profile_image_url: Optional[str] = None
+    preferred_language: Optional[str] = None
+    rating: Optional[int] = None
+    country: Optional[str] = None
+    roles: List[str]  # List of user roles (customer, listener, or both)
+    is_active: bool
+    is_online: Optional[bool] = None
+    last_seen: Optional[datetime] = None
+    is_verified: Optional[bool] = None  # For listeners
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminUserListResponse(BaseModel):
+    users: List[AdminUserResponse]
+    total_count: int
+    page: int
+    per_page: int
+    has_next: bool
+    has_previous: bool
+
+
+class AdminUserStatusUpdateRequest(BaseModel):
+    user_id: int
+    is_active: bool
+
+
+class AdminUserStatusUpdateResponse(BaseModel):
+    success: bool
+    message: str
+    user_id: int
+    is_active: bool
+    user_type: str  # "customer", "listener", or "both"
