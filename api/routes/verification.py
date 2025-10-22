@@ -3,7 +3,7 @@ from api.clients.jwt_handler import decode_jwt
 from api.clients.redis_client import redis_client
 from api.clients.db import get_db_pool
 from api.utils.user_validation import validate_user_active
-from api.schemas.verification import VerificationStatusResponse, AdminVerificationListResponse, UnverifiedListenerResponse
+from api.schemas.verification import VerificationStatusResponse, AdminVerificationListResponse, UnverifiedListenerResponse, VerifiedListenerResponse
 
 router = APIRouter(tags=["Verification"])
 
@@ -77,7 +77,7 @@ async def get_unverified_listeners(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=1, le=100, description="Items per page")
 ):
-    """Get list of all unverified listeners for admin review"""
+    """Get list of unverified and verified listeners for admin review"""
     
     # Calculate offset for pagination
     offset = (page - 1) * per_page
@@ -85,7 +85,7 @@ async def get_unverified_listeners(
     pool = await get_db_pool()
     async with pool.acquire() as conn:
         # Get total count of unverified listeners
-        total_count = await conn.fetchval(
+        total_unverified_count = await conn.fetchval(
             """
             SELECT COUNT(*)
             FROM users u
@@ -99,8 +99,23 @@ async def get_unverified_listeners(
             """
         )
         
+        # Get total count of verified listeners
+        total_verified_count = await conn.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM users u
+            JOIN user_roles ur ON u.user_id = ur.user_id
+            JOIN listener_profile lp ON u.user_id = lp.listener_id
+            WHERE ur.role = 'listener' 
+            AND lp.verification_status = TRUE
+            AND u.user_id IN (
+                SELECT user_id FROM user_status WHERE is_active = TRUE
+            )
+            """
+        )
+
         # Get unverified listeners with pagination
-        listeners = await conn.fetch(
+        unverified_rows = await conn.fetch(
             """
             SELECT 
                 u.user_id,
@@ -129,10 +144,42 @@ async def get_unverified_listeners(
             """,
             per_page, offset
         )
-        
+
+        # Get verified listeners with pagination
+        verified_rows = await conn.fetch(
+            """
+            SELECT 
+                u.user_id,
+                u.username,
+                u.sex,
+                u.bio,
+                u.interests,
+                u.profile_image_url,
+                u.preferred_language,
+                u.country,
+                lp.verification_status,
+                lp.verification_message,
+                lp.audio_file_url,
+                lp.verified_on,
+                lp.created_at,
+                lp.updated_at
+            FROM users u
+            JOIN user_roles ur ON u.user_id = ur.user_id
+            JOIN listener_profile lp ON u.user_id = lp.listener_id
+            WHERE ur.role = 'listener' 
+            AND lp.verification_status = TRUE
+            AND u.user_id IN (
+                SELECT user_id FROM user_status WHERE is_active = TRUE
+            )
+            ORDER BY lp.verified_on DESC NULLS LAST
+            LIMIT $1 OFFSET $2
+            """,
+            per_page, offset
+        )
+
         # Convert to response format
         unverified_listeners = []
-        for listener in listeners:
+        for listener in unverified_rows:
             unverified_listeners.append(UnverifiedListenerResponse(
                 user_id=listener["user_id"],
                 username=listener["username"],
@@ -148,16 +195,41 @@ async def get_unverified_listeners(
                 created_at=listener["created_at"],
                 updated_at=listener["updated_at"]
             ))
-        
-        # Calculate pagination info
-        has_next = (offset + per_page) < total_count
-        has_previous = page > 1
+
+        verified_listeners = []
+        for listener in verified_rows:
+            verified_listeners.append(VerifiedListenerResponse(
+                user_id=listener["user_id"],
+                username=listener["username"],
+                sex=listener["sex"],
+                bio=listener["bio"],
+                interests=listener["interests"],
+                profile_image_url=listener["profile_image_url"],
+                preferred_language=listener["preferred_language"],
+                country=listener["country"],
+                verification_status=listener["verification_status"],
+                verification_message=listener["verification_message"],
+                audio_file_url=listener["audio_file_url"],
+                verified_on=listener["verified_on"],
+                created_at=listener["created_at"],
+                updated_at=listener["updated_at"]
+            ))
+
+        # Calculate pagination info for both lists
+        has_next_unverified = (offset + per_page) < total_unverified_count
+        has_previous_unverified = page > 1
+        has_next_verified = (offset + per_page) < total_verified_count
+        has_previous_verified = page > 1
         
         return AdminVerificationListResponse(
             unverified_listeners=unverified_listeners,
-            total_count=total_count,
+            verified_listeners=verified_listeners,
+            total_unverified_count=total_unverified_count,
+            total_verified_count=total_verified_count,
             page=page,
             per_page=per_page,
-            has_next=has_next,
-            has_previous=has_previous
+            has_next_unverified=has_next_unverified,
+            has_previous_unverified=has_previous_unverified,
+            has_next_verified=has_next_verified,
+            has_previous_verified=has_previous_verified
         )
